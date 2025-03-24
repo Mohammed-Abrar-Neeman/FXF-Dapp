@@ -10,6 +10,6 @@ contract FxF is ERC20, Ownable {
         ERC20("Fast & Furious", "FxF")
         Ownable(initialOwner)
     {
-        _mint(initialOwner, 9_00_000_000 * 10 ** 18);
+        _mint(initialOwner, 1_000_000_000 * 10 ** 18);
     }
 }
