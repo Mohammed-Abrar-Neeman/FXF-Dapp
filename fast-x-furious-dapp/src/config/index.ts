@@ -23,3 +23,9 @@ export const wagmiAdapter = new WagmiAdapter({
 })
 
 export const config = wagmiAdapter.wagmiConfig
+
+// Contract configuration
+export const contractConfig = {
+  address: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`,
+  abi: [] // Your contract ABI will go here
+}
