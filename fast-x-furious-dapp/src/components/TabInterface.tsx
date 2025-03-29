@@ -1,12 +1,14 @@
 'use client'
 
 import TokenInfo from './TokenInfo'
+import SaleInfo from './SaleInfo'
 
 export default function TabInterface() {
   return (
     <div className="main-container">
       <div className="content-section">
         <TokenInfo />
+        <SaleInfo />
       </div>
 
       <style jsx>{`
