@@ -3,6 +3,7 @@
 import { useSaleContractRead } from '@/hooks/useSaleContract'
 import { useClientMounted } from "@/hooks/useClientMount"
 import { formatUnits } from 'viem'
+import UserVestingInfo from './UserVestingInfo'
 
 export default function SaleInfo() {
   const mounted = useClientMounted()
@@ -134,6 +135,8 @@ export default function SaleInfo() {
           <span className="subtitle">Tokens in vesting</span>
         </div>
       </div>
+
+      <UserVestingInfo />
 
       <style jsx>{`
         .sale-info {
