@@ -7,12 +7,26 @@ import { formatUnits } from 'viem'
 export default function SaleInfo() {
   const mounted = useClientMounted()
 
-  // Get prices using the sale contract read hook
+  // Price data
   const { data: fxfPrice } = useSaleContractRead('getFxfPrice')
   const { data: ethPrice } = useSaleContractRead('getLatestETHPrice')
-  const { data: ethForOneFxf } = useSaleContractRead('calculateEthForFxf', [BigInt(1e18)]) // 1 FXF = 1e18
+  const { data: ethForOneFxf } = useSaleContractRead('calculateEthForFxf', [BigInt(1e18)])
+
+  // Sale statistics
+  const { data: fxfBalance } = useSaleContractRead('getFxfBalance')
+  const { data: availableBalance } = useSaleContractRead('getAvailableBalance')
+  const { data: tokensSold } = useSaleContractRead('tokensSold')
+  const { data: totalVestedAmount } = useSaleContractRead('totalVestedAmount')
 
   if (!mounted) return null
+
+  // Add debug logging
+  console.log('Sale Statistics:', {
+    fxfBalance: fxfBalance?.toString(),
+    availableBalance: availableBalance?.toString(),
+    tokensSold: tokensSold?.toString(),
+    totalVestedAmount: totalVestedAmount?.toString()
+  })
 
   const formatFxfPrice = (price: bigint | undefined) => {
     if (!price) return 'Loading...'
@@ -59,6 +73,20 @@ export default function SaleInfo() {
     }
   }
 
+  const formatFxfAmount = (amount: bigint | undefined) => {
+    if (amount === undefined) return 'Loading...'
+    try {
+      const formattedAmount = formatUnits(amount, 18)
+      return `${Number(formattedAmount).toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      })} FXF`
+    } catch (error) {
+      console.error('FXF Amount formatting error:', error)
+      return 'Error'
+    }
+  }
+
   console.log('Raw prices:', {
     fxfPrice: fxfPrice?.toString(),
     ethPrice: ethPrice?.toString(),
@@ -83,6 +111,27 @@ export default function SaleInfo() {
         <div className="info-card highlight">
           <h3>ETH for 1 FXF</h3>
           <p>{formatEthAmount(ethForOneFxf as bigint)}</p>
+        </div>
+      </div>
+
+      <h2 className="title" style={{ marginTop: '40px' }}>Sale Statistics</h2>
+      <div className="info-grid">
+        <div className="info-card">
+          <h3>Available Balance</h3>
+          <p>{formatFxfAmount(availableBalance as bigint)}</p>
+          <span className="subtitle">Remaining tokens for sale</span>
+        </div>
+
+        <div className="info-card">
+          <h3>Tokens Sold</h3>
+          <p>{formatFxfAmount(tokensSold as bigint)}</p>
+          <span className="subtitle">Total FXF tokens sold</span>
+        </div>
+
+        <div className="info-card">
+          <h3>Total Vested Amount</h3>
+          <p>{formatFxfAmount(totalVestedAmount as bigint)}</p>
+          <span className="subtitle">Tokens in vesting</span>
         </div>
       </div>
 
@@ -111,6 +160,7 @@ export default function SaleInfo() {
           border-radius: 12px;
           transition: all 0.3s ease;
           min-width: 0;
+          position: relative;
         }
 
         .info-card:hover {
@@ -131,6 +181,13 @@ export default function SaleInfo() {
           font-weight: 600;
           color: #1a1a1a;
           margin: 0;
+        }
+
+        .subtitle {
+          display: block;
+          font-size: 12px;
+          color: #666;
+          margin-top: 8px;
         }
 
         @media (max-width: 768px) {
