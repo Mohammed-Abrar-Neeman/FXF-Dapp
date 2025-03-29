@@ -1,78 +1,37 @@
 'use client'
 
-import { useState } from 'react'
 import TokenInfo from './TokenInfo'
-import SaleInfo from './SaleInfo'
-import AdminPanel from './AdminPanel'
 
 export default function TabInterface() {
-  const [activeTab, setActiveTab] = useState('token')
-
   return (
-    <div className="tab-interface">
-      <div className="tab-buttons">
-        <button 
-          className={`tab-button ${activeTab === 'token' ? 'active' : ''}`}
-          onClick={() => setActiveTab('token')}
-        >
-          FXF Token
-        </button>
-        <button 
-          className={`tab-button ${activeTab === 'sale' ? 'active' : ''}`}
-          onClick={() => setActiveTab('sale')}
-        >
-          FXF Sale
-        </button>
-        <button 
-          className={`tab-button ${activeTab === 'admin' ? 'active' : ''}`}
-          onClick={() => setActiveTab('admin')}
-        >
-          Admin
-        </button>
-      </div>
-
-      <div className="tab-content">
-        {activeTab === 'token' && <TokenInfo />}
-        {activeTab === 'sale' && <SaleInfo />}
-        {activeTab === 'admin' && <AdminPanel />}
+    <div className="main-container">
+      <div className="content-section">
+        <TokenInfo />
       </div>
 
       <style jsx>{`
-        .tab-interface {
+        .main-container {
           width: 100%;
-          margin: 20px 0;
+          max-width: 1200px;
+          margin: 0 auto;
+          padding: 40px 20px;
         }
 
-        .tab-buttons {
-          display: flex;
-          gap: 2px;
-          margin-bottom: 20px;
-          border-bottom: 2px solid #eee;
+        .content-section {
+          background: white;
+          border-radius: 16px;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+          padding: 32px;
         }
 
-        .tab-button {
-          padding: 12px 24px;
-          border: none;
-          background: none;
-          cursor: pointer;
-          font-size: 16px;
-          font-weight: 500;
-          color: #666;
-          transition: all 0.3s ease;
-        }
+        @media (max-width: 768px) {
+          .main-container {
+            padding: 20px;
+          }
 
-        .tab-button:hover {
-          color: #333;
-        }
-
-        .tab-button.active {
-          color: #000;
-          border-bottom: 2px solid #000;
-          margin-bottom: -2px;
-        }
-
-        .tab-content {
-          padding: 20px 0;
+          .content-section {
+            padding: 20px;
+          }
         }
       `}</style>
     </div>
