@@ -4,8 +4,9 @@ import { useSaleContractRead } from '@/hooks/useSaleContract'
 import { useClientMounted } from "@/hooks/useClientMount"
 import { formatUnits } from 'viem'
 import { useReadContracts } from 'wagmi'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import FXFSaleABI from '../abi/FXFSale.json'
+import BuyRaffleModal from './BuyRaffleModal'
 
 const SALE_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_SALE_CONTRACT_ADDRESS || ''
 
@@ -26,6 +27,11 @@ interface Raffle {
 
 export default function RaffleInfo() {
   const mounted = useClientMounted()
+  const [selectedRaffle, setSelectedRaffle] = useState<{
+    id: number
+    ticketPrice: bigint
+    prize: string
+  } | null>(null)
 
   // Get current raffle ID
   const { data: currentRaffleId } = useSaleContractRead('currentRaffleId')
@@ -208,10 +214,33 @@ export default function RaffleInfo() {
                   </div>
                 </div>
               </div>
+
+              {!safeRaffle.completed && (
+                <div className="buy-section">
+                  <button 
+                    className="buy-button"
+                    onClick={() => setSelectedRaffle({
+                      id: index + 1,
+                      ticketPrice: safeRaffle.ticketPrice,
+                      prize: safeRaffle.prize
+                    })}
+                  >
+                    Buy Tickets
+                  </button>
+                </div>
+              )}
             </div>
           )
         })}
       </div>
+
+      <BuyRaffleModal
+        isOpen={!!selectedRaffle}
+        onClose={() => setSelectedRaffle(null)}
+        raffleId={selectedRaffle?.id || 0}
+        ticketPrice={selectedRaffle?.ticketPrice || BigInt(0)}
+        prize={selectedRaffle?.prize || ''}
+      />
 
       <style jsx>{`
         .raffle-info {
@@ -238,6 +267,9 @@ export default function RaffleInfo() {
           padding: 16px;
           box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
           border: 1px solid #eee;
+          display: flex;
+          flex-direction: column;
+          height: 100%;
         }
 
         .raffle-card.completed {
@@ -289,6 +321,7 @@ export default function RaffleInfo() {
         }
 
         .info-grid {
+          flex: 1;
           display: grid;
           grid-template-columns: 1fr 1fr;
           gap: 12px;
@@ -319,8 +352,9 @@ export default function RaffleInfo() {
         }
 
         .payments-section {
-          border-top: 1px solid #eee;
+          margin-top: auto;
           padding-top: 12px;
+          border-top: 1px solid #eee;
         }
 
         .payments-grid {
@@ -349,9 +383,75 @@ export default function RaffleInfo() {
           color: #1a1a1a;
         }
 
+        .buy-section {
+          margin-top: 12px;
+          padding-top: 12px;
+          border-top: 1px solid #eee;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          width: 100%;
+        }
+
+        .buy-button {
+          background: #1976d2;
+          color: white;
+          border: none;
+          border-radius: 6px;
+          padding: 10px 16px;
+          font-size: 14px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          width: 100%;
+          max-width: 200px;
+          min-height: 40px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .buy-button:hover {
+          background: #1565c0;
+          transform: translateY(-1px);
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .buy-button:active {
+          transform: translateY(0);
+          box-shadow: none;
+        }
+
         @media (max-width: 768px) {
           .raffles-grid {
             grid-template-columns: 1fr;
+          }
+
+          .raffle-card {
+            padding: 12px;
+          }
+
+          .buy-section {
+            padding-top: 10px;
+            margin-top: 10px;
+          }
+
+          .buy-button {
+            padding: 8px 12px;
+            font-size: 13px;
+            min-height: 36px;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .raffle-card {
+            padding: 10px;
+          }
+
+          .buy-button {
+            padding: 8px;
+            font-size: 12px;
+            min-height: 32px;
           }
         }
       `}</style>
