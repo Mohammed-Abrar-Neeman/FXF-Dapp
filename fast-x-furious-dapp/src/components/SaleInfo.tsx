@@ -10,6 +10,7 @@ export default function SaleInfo() {
   // Get prices using the sale contract read hook
   const { data: fxfPrice } = useSaleContractRead('getFxfPrice')
   const { data: ethPrice } = useSaleContractRead('getLatestETHPrice')
+  const { data: ethForOneFxf } = useSaleContractRead('calculateEthForFxf', [BigInt(1e18)]) // 1 FXF = 1e18
 
   if (!mounted) return null
 
@@ -42,9 +43,26 @@ export default function SaleInfo() {
     }
   }
 
+  const formatEthAmount = (amount: bigint | undefined) => {
+    if (!amount) return 'Loading...'
+    try {
+      console.log('ETH amount raw:', amount.toString())
+      
+      const formattedAmount = formatUnits(amount, 18) // Changed back to 18 decimals
+      return `${Number(formattedAmount).toLocaleString(undefined, {
+        minimumFractionDigits: 8,
+        maximumFractionDigits: 8
+      })} ETH`
+    } catch (error) {
+      console.error('ETH Amount formatting error:', error)
+      return 'Error'
+    }
+  }
+
   console.log('Raw prices:', {
     fxfPrice: fxfPrice?.toString(),
-    ethPrice: ethPrice?.toString()
+    ethPrice: ethPrice?.toString(),
+    ethForOneFxf: ethForOneFxf?.toString()
   })
 
   return (
@@ -60,6 +78,11 @@ export default function SaleInfo() {
         <div className="info-card">
           <h3>ETH Price</h3>
           <p>{formatEthPrice(ethPrice as bigint)}</p>
+        </div>
+
+        <div className="info-card highlight">
+          <h3>ETH for 1 FXF</h3>
+          <p>{formatEthAmount(ethForOneFxf as bigint)}</p>
         </div>
       </div>
 
