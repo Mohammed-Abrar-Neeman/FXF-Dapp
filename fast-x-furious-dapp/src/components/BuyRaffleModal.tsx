@@ -1,12 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { formatUnits } from 'viem'
-import { useAccount, useBalance, useToken } from 'wagmi'
+import { formatUnits, parseUnits } from 'viem'
+import { useAccount, useBalance } from 'wagmi'
 import { useSaleContractRead } from '@/hooks/useSaleContract'
 
-const USDC_ADDRESS = '0x6DCb60F143Ba8F34e87BC3EceaE49960D490D905' // Replace with actual address
-const USDT_ADDRESS = '0x4754EF95d4bcBDfF762f2D75CbaD0429967ced46' // Replace with actual address
+const USDC_ADDRESS = '0x6DCb60F143Ba8F34e87BC3EceaE49960D490D905'
+const USDT_ADDRESS = '0x4754EF95d4bcBDfF762f2D75CbaD0429967ced46'
+const ETH_ADDRESS = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE'
 
 type PaymentMethod = 'ETH' | 'USDT' | 'USDC'
 
@@ -19,31 +20,21 @@ interface BuyRaffleModalProps {
 }
 
 export default function BuyRaffleModal({ isOpen, onClose, raffleId, ticketPrice, prize }: BuyRaffleModalProps) {
+  // Basic state
   const [quantity, setQuantity] = useState<number>(1)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('ETH')
   const { address } = useAccount()
-
-  // Get balances
-  const { data: ethBalance } = useBalance({
-    address,
-  })
-
-  const { data: usdcBalance } = useBalance({
-    address,
-    token: USDC_ADDRESS,
-  })
-
-  const { data: usdtBalance } = useBalance({
-    address,
-    token: USDT_ADDRESS,
-  })
 
   // Get latest prices
   const { data: ethPrice } = useSaleContractRead('getLatestETHPrice')
   const { data: fxfPrice } = useSaleContractRead('getFxfPrice')
 
-  if (!isOpen) return null
+  // Get balances
+  const { data: ethBalance } = useBalance({ address })
+  const { data: usdcBalance } = useBalance({ address, token: USDC_ADDRESS })
+  const { data: usdtBalance } = useBalance({ address, token: USDT_ADDRESS })
 
+  // Helper functions
   const formatFxfAmount = (amount: bigint) => {
     try {
       return formatUnits(amount, 18)
@@ -51,6 +42,37 @@ export default function BuyRaffleModal({ isOpen, onClose, raffleId, ticketPrice,
       return '0'
     }
   }
+
+  const calculatePaymentAmount = (fxfAmount: number, method: PaymentMethod) => {
+    if (!fxfPrice) return '0'
+    
+    try {
+      switch (method) {
+        case 'ETH':
+          if (!ethPrice) return '0'
+          const usdAmount = fxfAmount * Number(formatUnits(fxfPrice, 18))
+          const ethAmount = usdAmount / Number(formatUnits(ethPrice, 8))
+          return ethAmount.toString()
+        case 'USDC':
+        case 'USDT':
+          const stableAmount = fxfAmount * Number(formatUnits(fxfPrice, 18))
+          return stableAmount.toString()
+        default:
+          return '0'
+      }
+    } catch (error) {
+      console.error('Error calculating payment amount:', error)
+      return '0'
+    }
+  }
+
+  const formatDisplayAmount = (amount: string, method: PaymentMethod) => {
+    return `${Number(amount).toFixed(6)} ${method}`
+  }
+
+  // Calculate total costs
+  const totalFxfCost = Number(formatFxfAmount(ticketPrice)) * quantity
+  const paymentAmount = calculatePaymentAmount(totalFxfCost, paymentMethod)
 
   const getBalanceForMethod = (method: PaymentMethod) => {
     switch (method) {
@@ -65,34 +87,6 @@ export default function BuyRaffleModal({ isOpen, onClose, raffleId, ticketPrice,
     }
   }
 
-  const calculatePaymentAmount = (fxfAmount: number, method: PaymentMethod) => {
-    if (!fxfPrice) return '0'
-    
-    try {
-      switch (method) {
-        case 'ETH':
-          if (!ethPrice) return '0 ETH'
-          // Convert FXF amount to USD, then to ETH
-          const usdAmount = fxfAmount * Number(formatUnits(fxfPrice, 18))
-          const ethAmount = usdAmount / Number(formatUnits(ethPrice, 8))
-          return `${ethAmount.toFixed(6)} ETH`
-        case 'USDC':
-        case 'USDT':
-          // For stable coins, just convert FXF to USD
-          const stableAmount = fxfAmount * Number(formatUnits(fxfPrice, 18))
-          return `${stableAmount.toFixed(6)} ${method}`
-        default:
-          return '0'
-      }
-    } catch (error) {
-      console.error('Error calculating payment amount:', error)
-      return '0'
-    }
-  }
-
-  const totalFxfCost = Number(formatFxfAmount(ticketPrice)) * quantity
-  const paymentAmount = calculatePaymentAmount(totalFxfCost, paymentMethod)
-
   const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value)
     if (!isNaN(value) && value > 0) {
@@ -100,132 +94,152 @@ export default function BuyRaffleModal({ isOpen, onClose, raffleId, ticketPrice,
     }
   }
 
+  // Temporary placeholder functions
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    console.log('Purchasing tickets:', {
-      raffleId,
-      quantity,
-      totalFxfCost,
-      paymentMethod
-    })
+    console.log('Submit clicked:', { paymentMethod, quantity, paymentAmount })
   }
 
-  return (
-    <div className="modal-overlay">
-      <div className="modal-content">
-        <div className="modal-header">
-          <h3>Buy Raffle Tickets</h3>
-          <button className="close-button" onClick={onClose}>&times;</button>
-        </div>
+  if (!isOpen) return null
 
-        <div className="modal-body">
-          <div className="raffle-info">
-            <p><strong>Raffle #{raffleId}</strong></p>
-            <p>Prize: {prize}</p>
-            <p>Ticket Price: {formatFxfAmount(ticketPrice)} FXF</p>
+  return (
+    <div className="modal-root">
+      <div className="modal-overlay">
+        <div className="modal-content">
+          <div className="modal-header">
+            <h3>Buy Raffle Tickets</h3>
+            <button className="close-button" onClick={onClose}>&times;</button>
           </div>
 
-          <form onSubmit={handleSubmit} className="buy-form">
-            <div className="form-group">
-              <label htmlFor="quantity">Number of Tickets</label>
-              <div className="quantity-input">
-                <button 
-                  type="button" 
-                  className="quantity-btn"
-                  onClick={() => quantity > 1 && setQuantity(q => q - 1)}
-                >
-                  -
-                </button>
-                <input
-                  id="quantity"
-                  type="number"
-                  min="1"
-                  value={quantity}
-                  onChange={handleQuantityChange}
-                />
-                <button 
-                  type="button" 
-                  className="quantity-btn"
-                  onClick={() => setQuantity(q => q + 1)}
-                >
-                  +
-                </button>
+          <div className="modal-body">
+            <div className="raffle-info">
+              <div className="raffle-header">
+                <h4>Raffle #{raffleId}</h4>
+                <span className="prize-tag">{prize}</span>
+              </div>
+              <div className="ticket-price">
+                <span>Ticket Price:</span>
+                <span className="price-value">{formatFxfAmount(ticketPrice)} FXF</span>
               </div>
             </div>
 
-            <div className="form-group">
-              <label>Payment Method</label>
-              <div className="payment-methods">
-                {(['ETH', 'USDT', 'USDC'] as PaymentMethod[]).map((method) => (
-                  <button
-                    key={method}
-                    type="button"
-                    className={`payment-method-btn ${paymentMethod === method ? 'active' : ''}`}
-                    onClick={() => setPaymentMethod(method)}
+            <form onSubmit={handleSubmit} className="buy-form">
+              <div className="form-group">
+                <label htmlFor="quantity">Number of Tickets</label>
+                <div className="quantity-input">
+                  <button 
+                    type="button" 
+                    className="quantity-btn"
+                    onClick={() => quantity > 1 && setQuantity(q => q - 1)}
                   >
-                    <div className="payment-method-content">
-                      <span className="method-name">{method}</span>
-                      <span className="method-balance">{getBalanceForMethod(method)}</span>
-                    </div>
+                    -
                   </button>
-                ))}
+                  <input
+                    id="quantity"
+                    type="number"
+                    min="1"
+                    value={quantity}
+                    onChange={handleQuantityChange}
+                  />
+                  <button 
+                    type="button" 
+                    className="quantity-btn"
+                    onClick={() => setQuantity(q => q + 1)}
+                  >
+                    +
+                  </button>
+                </div>
               </div>
-            </div>
 
-            <div className="total-cost">
-              <div className="cost-row">
-                <span>Total FXF:</span>
-                <span>{totalFxfCost.toFixed(6)} FXF</span>
+              <div className="form-group">
+                <label>Payment Method</label>
+                <div className="payment-methods">
+                  {(['ETH', 'USDT', 'USDC'] as PaymentMethod[]).map((method) => (
+                    <button
+                      key={method}
+                      type="button"
+                      className={`payment-method-btn ${paymentMethod === method ? 'active' : ''}`}
+                      onClick={() => setPaymentMethod(method)}
+                    >
+                      <div className="payment-method-content">
+                        <span className="method-name">{method}</span>
+                        <span className="method-balance">{getBalanceForMethod(method)}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div className="cost-row">
-                <span>Payment Amount:</span>
-                <span>{paymentAmount}</span>
-              </div>
-            </div>
 
-            <div className="submit-container">
+              <div className="total-cost">
+                <div className="cost-row">
+                  <span>Total FXF:</span>
+                  <span className="amount">{totalFxfCost.toFixed(2)} FXF</span>
+                </div>
+                <div className="cost-row highlight">
+                  <span>Payment Amount:</span>
+                  <span className="amount">{formatDisplayAmount(paymentAmount, paymentMethod)}</span>
+                </div>
+              </div>
+
               <button type="submit" className="submit-btn">
-                Purchase with {paymentMethod}
+                Buy Tickets
               </button>
-            </div>
-          </form>
+            </form>
+          </div>
         </div>
       </div>
 
       <style jsx>{`
+        .modal-root {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100vw;
+          height: 100vh;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          z-index: 9999;
+          pointer-events: none;
+        }
+
         .modal-overlay {
           position: fixed;
           top: 0;
           left: 0;
           right: 0;
           bottom: 0;
-          background: rgba(0, 0, 0, 0.5);
+          background: rgba(0, 0, 0, 0.7);
           display: flex;
           justify-content: center;
           align-items: center;
-          z-index: 1000;
+          padding: 20px;
+          z-index: 10000;
+          pointer-events: auto;
         }
 
         .modal-content {
-          background: white;
+          background: #fff;
           border-radius: 12px;
-          width: 90%;
-          max-width: 500px;
-          max-height: 90vh;
-          overflow-y: auto;
+          width: 100%;
+          max-width: 480px;
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+          position: relative;
+          z-index: 10001;
         }
 
         .modal-header {
+          padding: 20px 24px;
+          border-bottom: 1px solid #eee;
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 16px;
-          border-bottom: 1px solid #eee;
         }
 
         .modal-header h3 {
           margin: 0;
-          font-size: 18px;
+          font-size: 20px;
+          color: #1a1a1a;
         }
 
         .close-button {
@@ -233,94 +247,107 @@ export default function BuyRaffleModal({ isOpen, onClose, raffleId, ticketPrice,
           border: none;
           font-size: 24px;
           cursor: pointer;
-          padding: 0;
           color: #666;
         }
 
-        .close-button:hover {
-          color: #1a1a1a;
-        }
-
         .modal-body {
-          padding: 16px;
+          padding: 24px;
         }
 
         .raffle-info {
           background: #f8f9fa;
-          padding: 12px;
           border-radius: 8px;
-          margin-bottom: 16px;
+          padding: 16px;
+          margin-bottom: 24px;
         }
 
-        .raffle-info p {
-          margin: 0 0 8px 0;
+        .raffle-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 12px;
         }
 
-        .raffle-info p:last-child {
+        .raffle-header h4 {
           margin: 0;
+          font-size: 18px;
+          color: #1a1a1a;
         }
 
-        .buy-form {
-          margin-top: 20px;
+        .prize-tag {
+          background: #e3f2fd;
+          color: #1976d2;
+          padding: 4px 12px;
+          border-radius: 16px;
+          font-size: 14px;
+        }
+
+        .ticket-price {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          color: #666;
+        }
+
+        .price-value {
+          font-weight: 500;
+          color: #1a1a1a;
         }
 
         .form-group {
-          margin-bottom: 20px;
+          margin-bottom: 24px;
         }
 
         .form-group label {
           display: block;
           margin-bottom: 8px;
-          font-size: 14px;
-          color: #666;
-          text-align: center;
+          font-weight: 500;
+          color: #1a1a1a;
         }
 
         .quantity-input {
           display: flex;
           align-items: center;
-          justify-content: center;
-          gap: 8px;
-          margin: 0 auto;
-          width: fit-content;
+          border: 1px solid #ddd;
+          border-radius: 8px;
+          overflow: hidden;
+        }
+
+        .quantity-btn {
+          background: #f8f9fa;
+          border: none;
+          padding: 8px 16px;
+          font-size: 18px;
+          cursor: pointer;
+          color: #1976d2;
         }
 
         .quantity-input input {
           width: 80px;
           text-align: center;
+          border: none;
           padding: 8px;
-          border: 1px solid #ddd;
-          border-radius: 6px;
-          font-size: 14px;
-          margin: 0 8px;
-        }
-
-        .quantity-btn {
-          background: #f8f9fa;
-          border: 1px solid #ddd;
-          border-radius: 6px;
-          width: 36px;
-          height: 36px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-          font-size: 18px;
-          color: #666;
-          transition: all 0.2s ease;
-        }
-
-        .quantity-btn:hover {
-          background: #e9ecef;
-          border-color: #1976d2;
-          color: #1976d2;
+          font-size: 16px;
         }
 
         .payment-methods {
           display: grid;
           grid-template-columns: repeat(3, 1fr);
-          gap: 8px;
-          margin-top: 8px;
+          gap: 12px;
+        }
+
+        .payment-method-btn {
+          background: #fff;
+          border: 1px solid #ddd;
+          border-radius: 8px;
+          padding: 12px;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .payment-method-btn.active {
+          border-color: #1976d2;
+          background: #e3f2fd;
         }
 
         .payment-method-content {
@@ -332,107 +359,61 @@ export default function BuyRaffleModal({ isOpen, onClose, raffleId, ticketPrice,
 
         .method-name {
           font-weight: 500;
+          color: #1a1a1a;
         }
 
         .method-balance {
           font-size: 12px;
-          opacity: 0.8;
-        }
-
-        .payment-method-btn {
-          padding: 8px 12px;
-          border: 1px solid #ddd;
-          border-radius: 6px;
-          background: white;
-          cursor: pointer;
-          font-size: 14px;
-          font-weight: 500;
           color: #666;
-          transition: all 0.2s ease;
-          height: 64px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .payment-method-btn:hover {
-          border-color: #1976d2;
-          color: #1976d2;
-        }
-
-        .payment-method-btn.active {
-          background: #1976d2;
-          color: white;
-          border-color: #1976d2;
-        }
-
-        .payment-method-btn.active .method-balance {
-          color: rgba(255, 255, 255, 0.9);
         }
 
         .total-cost {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-          padding: 16px;
           background: #f8f9fa;
           border-radius: 8px;
-          margin-bottom: 20px;
+          padding: 16px;
+          margin-bottom: 24px;
         }
 
         .cost-row {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          font-size: 14px;
+          padding: 8px 0;
+          color: #666;
         }
 
-        .cost-row:last-child {
-          padding-top: 8px;
+        .cost-row.highlight {
           border-top: 1px solid #eee;
+          margin-top: 8px;
+          padding-top: 16px;
+          color: #1a1a1a;
           font-weight: 500;
         }
 
-        .submit-container {
-          display: flex;
-          justify-content: center;
-          width: 100%;
-          padding: 0 16px;
+        .amount {
+          font-family: monospace;
         }
 
         .submit-btn {
           width: 100%;
-          max-width: 200px;
           background: #1976d2;
           color: white;
           border: none;
-          border-radius: 6px;
-          padding: 12px;
-          font-size: 14px;
+          border-radius: 8px;
+          padding: 14px;
+          font-size: 16px;
           font-weight: 500;
           cursor: pointer;
-          transition: all 0.2s ease;
+          transition: background 0.2s;
         }
 
         .submit-btn:hover {
           background: #1565c0;
-          transform: translateY(-1px);
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
-        .submit-btn:active {
-          transform: translateY(0);
-          box-shadow: none;
-        }
-
-        /* Hide number input arrows */
-        input[type=number]::-webkit-inner-spin-button, 
-        input[type=number]::-webkit-outer-spin-button { 
-          -webkit-appearance: none;
-          margin: 0;
-        }
-        input[type=number] {
-          -moz-appearance: textfield;
+        .submit-btn:disabled {
+          background: #ccc;
+          cursor: not-allowed;
         }
       `}</style>
     </div>
