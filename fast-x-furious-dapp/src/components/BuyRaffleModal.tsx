@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import { formatUnits, parseUnits } from 'viem'
 import { useAccount, useBalance, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
-import { useSaleContractRead } from '@/hooks/useSaleContract'
+import { useSaleContractRead, useSaleContractWrite } from '@/hooks/useSaleContract'
+import FXFSaleABI from '@/abi/FXFSale.json'
 
 const USDC_ADDRESS = '0x6DCb60F143Ba8F34e87BC3EceaE49960D490D905'
 const USDT_ADDRESS = '0x4754EF95d4bcBDfF762f2D75CbaD0429967ced46'
@@ -330,13 +331,106 @@ export default function BuyRaffleModal({ isOpen, onClose, raffleId, ticketPrice,
     }
   }
 
-  // Temporary placeholder functions
-  const handleSubmit = (e: React.FormEvent) => {
+  // Add purchase transaction states
+  const [isPurchaseLoading, setIsPurchaseLoading] = useState(false)
+  const [purchaseTxHash, setPurchaseTxHash] = useState<`0x${string}` | undefined>()
+
+  // Add purchase contract interaction
+  const { writeContract: buyRaffle } = useWriteContract({
+    mutation: {
+      onSuccess: (hash: `0x${string}`) => {
+        console.log('✅ Purchase transaction sent:', {
+          hash,
+          timestamp: new Date().toISOString()
+        })
+        setPurchaseTxHash(hash)
+      },
+      onError: (error) => {
+        console.error('❌ Purchase failed:', error)
+        setIsPurchaseLoading(false)
+      }
+    }
+  })
+
+  // Monitor purchase transaction
+  const { isLoading: isPurchasePending, data: purchaseData } = useWaitForTransactionReceipt({
+    hash: purchaseTxHash,
+    confirmations: 1,
+    pollingInterval: 1_000,
+  })
+
+  // Handle purchase transaction completion
+  useEffect(() => {
+    if (!purchaseData) return
+
+    console.log('📝 Purchase receipt:', {
+      data: purchaseData,
+      status: purchaseData.status,
+      timestamp: new Date().toISOString()
+    })
+
+    const isSuccess = purchaseData.status === 'success' || purchaseData.status === 1 || purchaseData.status === '0x1'
+    
+    if (isSuccess) {
+      console.log('🎉 Purchase confirmed!')
+      setIsPurchaseLoading(false)
+      setPurchaseTxHash(undefined)
+      onClose() // Close modal on success
+    } else {
+      console.error('❌ Purchase reverted:', purchaseData.status)
+      setIsPurchaseLoading(false)
+      setPurchaseTxHash(undefined)
+    }
+  }, [purchaseData, onClose])
+
+  // Update handleSubmit function
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log('Submit clicked:', { paymentMethod, quantity, paymentAmount })
+    
+    try {
+      setIsPurchaseLoading(true) // Set loading state immediately
+      
+      const tokenAddress = paymentMethod === 'ETH' ? ETH_ADDRESS :
+                          paymentMethod === 'USDT' ? USDT_ADDRESS :
+                          paymentMethod === 'USDC' ? USDC_ADDRESS : null
+      
+      if (!tokenAddress) {
+        throw new Error('Invalid payment method')
+      }
+
+      const decimals = paymentMethod === 'ETH' ? 18 : 6
+      const parsedAmount = parseUnits(paymentAmount, decimals)
+
+      console.log('💰 Preparing purchase:', {
+        token: tokenAddress,
+        amount: paymentAmount,
+        parsedAmount: parsedAmount.toString(),
+        forRaffle: true,
+        raffleId,
+        value: paymentMethod === 'ETH' ? parsedAmount : BigInt(0)
+      })
+
+      await buyRaffle({
+        address: process.env.NEXT_PUBLIC_SALE_CONTRACT_ADDRESS as `0x${string}`,
+        abi: FXFSaleABI,
+        functionName: 'buy',
+        args: [
+          tokenAddress,
+          paymentMethod === 'ETH' ? BigInt(0) : parsedAmount, // amount is 0 for ETH
+          true, // forRaffle
+          BigInt(raffleId)
+        ],
+        value: paymentMethod === 'ETH' ? parsedAmount : BigInt(0) // ETH value
+      })
+
+    } catch (error) {
+      console.error('❌ Purchase error:', error)
+      setIsPurchaseLoading(false)
+      setPurchaseTxHash(undefined)
+    }
   }
 
-  // Update getButtonState to be more precise
+  // Update getButtonState to handle all states
   const getButtonState = () => {
     // Log current state for debugging
     console.log('🔄 Button state:', {
@@ -344,13 +438,34 @@ export default function BuyRaffleModal({ isOpen, onClose, raffleId, ticketPrice,
       isApproveLoading,
       hasAllowance,
       approvalTxHash,
+      isPurchaseLoading,
+      isPurchasePending,
+      purchaseTxHash,
       paymentMethod
     })
 
-    // For ETH payments
-    if (paymentMethod === 'ETH') {
+    // If purchase transaction is pending on blockchain
+    if (isPurchasePending || purchaseTxHash) {
       return {
-        text: 'Purchase with ETH',
+        text: 'Confirming Purchase...',
+        disabled: true,
+        onClick: () => {}
+      }
+    }
+
+    // If waiting for user to confirm purchase in wallet
+    if (isPurchaseLoading && !purchaseTxHash) {
+      return {
+        text: 'Confirm in Wallet...',
+        disabled: true,
+        onClick: () => {}
+      }
+    }
+
+    // For ETH or approved token payments
+    if (paymentMethod === 'ETH' || hasAllowance) {
+      return {
+        text: `Purchase with ${paymentMethod}`,
         disabled: false,
         onClick: handleSubmit
       }
