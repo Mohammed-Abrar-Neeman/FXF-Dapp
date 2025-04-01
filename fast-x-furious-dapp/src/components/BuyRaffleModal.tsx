@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { formatUnits, parseUnits } from 'viem'
-import { useAccount, useBalance } from 'wagmi'
+import { useAccount, useBalance, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
 import { useSaleContractRead } from '@/hooks/useSaleContract'
 
 const USDC_ADDRESS = '0x6DCb60F143Ba8F34e87BC3EceaE49960D490D905'
@@ -19,6 +19,56 @@ interface BuyRaffleModalProps {
   prize: string
 }
 
+// Remove the erc20ABI import and define the ABI we need
+const ERC20_ABI = [
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "spender",
+        "type": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "approve",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      {
+        "name": "owner",
+        "type": "address"
+      },
+      {
+        "name": "spender",
+        "type": "address"
+      }
+    ],
+    "name": "allowance",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  }
+] as const;
+
 export default function BuyRaffleModal({ isOpen, onClose, raffleId, ticketPrice, prize }: BuyRaffleModalProps) {
   // Basic state
   const [quantity, setQuantity] = useState<number>(1)
@@ -28,11 +78,6 @@ export default function BuyRaffleModal({ isOpen, onClose, raffleId, ticketPrice,
   // Get latest prices
   const { data: ethPrice } = useSaleContractRead('getLatestETHPrice')
   const { data: fxfPrice } = useSaleContractRead('getFxfPrice')
-
-  // Get balances
-  const { data: ethBalance } = useBalance({ address })
-  const { data: usdcBalance } = useBalance({ address, token: USDC_ADDRESS })
-  const { data: usdtBalance } = useBalance({ address, token: USDT_ADDRESS })
 
   // Helper functions
   const formatFxfAmount = (amount: bigint) => {
@@ -66,13 +111,204 @@ export default function BuyRaffleModal({ isOpen, onClose, raffleId, ticketPrice,
     }
   }
 
+  // Calculate total costs - Move these up before they're used
+  const totalFxfCost = Number(formatFxfAmount(ticketPrice)) * quantity
+  const paymentAmount = calculatePaymentAmount(totalFxfCost, paymentMethod)
+
+  // Approval states
+  const [isApproveLoading, setIsApproveLoading] = useState(false)
+  const [hasAllowance, setHasAllowance] = useState(false)
+  const [approvalTxHash, setApprovalTxHash] = useState<`0x${string}` | undefined>()
+
+  // Get token contract for approval
+  const tokenAddress = paymentMethod === 'USDC' ? USDC_ADDRESS : 
+                      paymentMethod === 'USDT' ? USDT_ADDRESS : undefined
+
+  // Get balances
+  const { data: ethBalance } = useBalance({ address })
+  const { data: usdcBalance } = useBalance({ address, token: USDC_ADDRESS })
+  const { data: usdtBalance } = useBalance({ address, token: USDT_ADDRESS })
+
+  // Update the allowance check to use the new ABI
+  const { data: allowance, refetch: refetchAllowance } = useReadContract({
+    address: tokenAddress,
+    abi: ERC20_ABI,
+    functionName: 'allowance',
+    args: address && tokenAddress ? [
+      address,
+      process.env.NEXT_PUBLIC_SALE_CONTRACT_ADDRESS as `0x${string}`
+    ] : undefined,
+    query: {
+      enabled: paymentMethod !== 'ETH' && !!address && !!tokenAddress,
+    }
+  })
+
+  // Token approval
+  const { writeContract: approveToken } = useWriteContract({
+    mutation: {
+      onMutate: (variables) => {
+        console.log('🚀 Starting transaction:', {
+          type: 'approve',
+          variables,
+          timestamp: new Date().toISOString()
+        })
+      },
+      onSuccess: (hash: `0x${string}`) => {
+        console.log('✅ Transaction sent to network:', {
+          hash,
+          timestamp: new Date().toISOString()
+        })
+        setApprovalTxHash(hash)
+        setIsApproveLoading(true)
+      },
+      onError: (error) => {
+        console.error('❌ Transaction failed:', {
+          error,
+          timestamp: new Date().toISOString()
+        })
+        setIsApproveLoading(false)
+      }
+    }
+  })
+
+  // Monitor approval transaction with detailed logging
+  const { isLoading: isApprovalPending, data: txData } = useWaitForTransactionReceipt({
+    hash: approvalTxHash,
+    confirmations: 1,
+    pollingInterval: 1_000,
+  })
+
+  // Handle transaction completion via useEffect
+  useEffect(() => {
+    if (!txData) return
+
+    console.log('🔍 Transaction data received:', {
+      data: txData,
+      hash: approvalTxHash,
+      timestamp: new Date().toISOString()
+    })
+
+    // Log transaction receipt details
+    console.log('📝 Transaction receipt:', {
+      blockNumber: txData.blockNumber,
+      blockHash: txData.blockHash,
+      status: txData.status,
+      from: txData.from,
+      to: txData.to,
+      timestamp: new Date().toISOString()
+    })
+
+    // Check transaction status
+    const isSuccess = txData.status === 'success' || txData.status === 1 || txData.status === '0x1'
+    
+    if (isSuccess) {
+      console.log('✨ Transaction confirmed:', {
+        hash: approvalTxHash,
+        status: txData.status,
+        blockNumber: txData.blockNumber,
+        timestamp: new Date().toISOString()
+      })
+      
+      setApprovalTxHash(undefined)
+      setIsApproveLoading(false)
+      setHasAllowance(true)
+      
+      setTimeout(() => {
+        console.log('🔄 Refreshing allowance...')
+        refetchAllowance?.()
+      }, 1000)
+    } else {
+      console.error('⚠️ Transaction reverted:', {
+        status: txData.status,
+        timestamp: new Date().toISOString()
+      })
+      setApprovalTxHash(undefined)
+      setIsApproveLoading(false)
+      setHasAllowance(false)
+    }
+  }, [txData, approvalTxHash, refetchAllowance])
+
+  // Update the approval function
+  const handleApprove = async () => {
+    if (!address || !tokenAddress) {
+      console.log('❌ Missing address or token address')
+      return
+    }
+    
+    // Set loading state immediately when user clicks approve
+    setIsApproveLoading(true)
+    
+    console.log('🚀 Starting approval process...', {
+      tokenAddress,
+      spender: process.env.NEXT_PUBLIC_SALE_CONTRACT_ADDRESS
+    })
+    
+    try {
+      const decimals = paymentMethod === 'ETH' ? 18 : 6
+      const exactAmount = parseUnits(paymentAmount, decimals)
+      
+      console.log('📝 Preparing approval with:', {
+        token: tokenAddress,
+        spender: process.env.NEXT_PUBLIC_SALE_CONTRACT_ADDRESS,
+        amount: paymentAmount,
+        decimals,
+        parsedAmount: exactAmount.toString()
+      })
+
+      await approveToken({
+        address: tokenAddress,
+        abi: ERC20_ABI,
+        functionName: 'approve',
+        args: [
+          process.env.NEXT_PUBLIC_SALE_CONTRACT_ADDRESS as `0x${string}`,
+          exactAmount
+        ]
+      })
+    } catch (error) {
+      console.error('❌ Approval error:', error)
+      setIsApproveLoading(false)
+    }
+  }
+
+  // Update allowance check to match exact amount
+  useEffect(() => {
+    const checkAllowance = async () => {
+      if (paymentMethod === 'ETH') {
+        setHasAllowance(true)
+        return
+      }
+
+      if (allowance) {
+        console.log('💰 New allowance received:', allowance.toString())
+        try {
+          const decimals = paymentMethod === 'ETH' ? 18 : 6
+          const exactAmount = parseUnits(paymentAmount, decimals)
+          const hasEnoughAllowance = allowance >= exactAmount
+          
+          console.log('🔍 Checking allowance:', {
+            current: allowance.toString(),
+            needed: exactAmount.toString(),
+            hasEnough: hasEnoughAllowance,
+            decimals
+          })
+          
+          setHasAllowance(hasEnoughAllowance)
+        } catch (error) {
+          console.error('Error parsing payment amount:', error)
+          setHasAllowance(false)
+        }
+      } else {
+        setHasAllowance(false)
+      }
+    }
+
+    checkAllowance()
+  }, [allowance, paymentMethod, paymentAmount])
+
+  // Helper functions
   const formatDisplayAmount = (amount: string, method: PaymentMethod) => {
     return `${Number(amount).toFixed(6)} ${method}`
   }
-
-  // Calculate total costs
-  const totalFxfCost = Number(formatFxfAmount(ticketPrice)) * quantity
-  const paymentAmount = calculatePaymentAmount(totalFxfCost, paymentMethod)
 
   const getBalanceForMethod = (method: PaymentMethod) => {
     switch (method) {
@@ -98,6 +334,61 @@ export default function BuyRaffleModal({ isOpen, onClose, raffleId, ticketPrice,
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     console.log('Submit clicked:', { paymentMethod, quantity, paymentAmount })
+  }
+
+  // Update getButtonState to be more precise
+  const getButtonState = () => {
+    // Log current state for debugging
+    console.log('🔄 Button state:', {
+      isApprovalPending,
+      isApproveLoading,
+      hasAllowance,
+      approvalTxHash,
+      paymentMethod
+    })
+
+    // For ETH payments
+    if (paymentMethod === 'ETH') {
+      return {
+        text: 'Purchase with ETH',
+        disabled: false,
+        onClick: handleSubmit
+      }
+    }
+
+    // If transaction is being prepared
+    if (isApproveLoading && !approvalTxHash) {
+      return {
+        text: 'Confirm in Wallet...',
+        disabled: true,
+        onClick: () => {}
+      }
+    }
+
+    // If transaction is pending on blockchain
+    if (approvalTxHash) {
+      return {
+        text: 'Awaiting Confirmation...',
+        disabled: true,
+        onClick: () => {}
+      }
+    }
+
+    // For token payments that need approval
+    if (!hasAllowance) {
+      return {
+        text: `Enable ${paymentMethod}`,
+        disabled: false,
+        onClick: handleApprove
+      }
+    }
+
+    // For approved token payments
+    return {
+      text: `Purchase with ${paymentMethod}`,
+      disabled: false,
+      onClick: handleSubmit
+    }
   }
 
   if (!isOpen) return null
@@ -181,8 +472,8 @@ export default function BuyRaffleModal({ isOpen, onClose, raffleId, ticketPrice,
                 </div>
               </div>
 
-              <button type="submit" className="submit-btn">
-                Buy Tickets
+              <button type="submit" className="submit-btn" {...getButtonState()}>
+                {getButtonState().text}
               </button>
             </form>
           </div>
