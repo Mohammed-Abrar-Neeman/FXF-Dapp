@@ -4,10 +4,13 @@ import { useSaleContractRead } from '@/hooks/useSaleContract'
 import { useClientMounted } from "@/hooks/useClientMount"
 import { formatUnits } from 'viem'
 import { useAccount, useReadContracts } from 'wagmi'
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import FXFSaleABI from '../abi/FXFSale.json'
 
 const SALE_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_SALE_CONTRACT_ADDRESS || ''
+
+// Add vesting duration constant (180 days in seconds)
+const VESTING_DURATION = 180n * 24n * 60n * 60n // 180 days in seconds
 
 interface VestingPurchase {
   amount: bigint
@@ -19,6 +22,58 @@ interface VestingPurchase {
 interface RaffleVesting {
   raffleId: bigint
   purchases: VestingPurchase[]
+}
+
+// Add a helper function to calculate remaining time
+const calculateRemainingTime = (startTime: bigint) => {
+  const now = BigInt(Math.floor(Date.now() / 1000))
+  const endTime = startTime + VESTING_DURATION
+  const remaining = endTime - now
+
+  if (remaining <= 0n) return { days: 0, hours: 0, minutes: 0, seconds: 0, isComplete: true }
+
+  const days = Number(remaining / 86400n)
+  const hours = Number((remaining % 86400n) / 3600n)
+  const minutes = Number((remaining % 3600n) / 60n)
+  const seconds = Number(remaining % 60n)
+
+  return { days, hours, minutes, seconds, isComplete: false }
+}
+
+function VestingCountdown({ startTime }: { startTime: bigint }) {
+  const [remaining, setRemaining] = useState(calculateRemainingTime(startTime))
+
+  useEffect(() => {
+    // Initial calculation
+    setRemaining(calculateRemainingTime(startTime))
+
+    // Update every second
+    const timer = setInterval(() => {
+      const newRemaining = calculateRemainingTime(startTime)
+      setRemaining(newRemaining)
+
+      // Clear interval if vesting is complete
+      if (newRemaining.isComplete) {
+        clearInterval(timer)
+      }
+    }, 1000) // Update every second instead of minute
+
+    // Cleanup on unmount
+    return () => clearInterval(timer)
+  }, [startTime])
+
+  if (remaining.isComplete) {
+    return <span className="completed">Vesting Complete</span>
+  }
+
+  // Format numbers to always show two digits
+  const format = (num: number) => num.toString().padStart(2, '0')
+
+  return (
+    <span className="countdown">
+      {remaining.days}d {format(remaining.hours)}:{format(remaining.minutes)}:{format(remaining.seconds)}
+    </span>
+  )
 }
 
 export default function UserVestingInfo() {
@@ -131,6 +186,14 @@ export default function UserVestingInfo() {
                       <span>Start Date:</span>
                       <span>{formatDate(BigInt(purchase.startTime))}</span>
                     </div>
+                    <div className="info-row">
+                      <span>Vesting Period:</span>
+                      <span>180 days</span>
+                    </div>
+                    <div className="info-row countdown-row">
+                      <span>Time Remaining:</span>
+                      <VestingCountdown startTime={BigInt(purchase.startTime)} />
+                    </div>
                   </div>
                 </div>
               ))}
@@ -217,6 +280,30 @@ export default function UserVestingInfo() {
         .info-row span:last-child {
           font-weight: 500;
           color: #1a1a1a;
+        }
+
+        .countdown-row {
+          margin-top: 8px;
+          padding-top: 8px;
+          border-top: 1px dashed #eee;
+        }
+
+        .countdown {
+          color: #2563eb;
+          font-weight: 600;
+          font-family: monospace;
+          font-size: 1.1em;
+        }
+
+        .completed {
+          color: #16a34a;
+          font-weight: 600;
+        }
+
+        .info-row span:last-child {
+          font-weight: 500;
+          color: #1a1a1a;
+          text-align: right;
         }
 
         @media (max-width: 768px) {
