@@ -311,6 +311,108 @@ function ReleaseButton({ raffleId, isComplete }: { raffleId: bigint, isComplete:
   )
 }
 
+function ReleaseAllButton() {
+  const [isReleasing, setIsReleasing] = useState(false)
+  const [txHash, setTxHash] = useState<`0x${string}` | undefined>()
+  const { address: userAddress } = useAccount()
+
+  const { writeContract, isPending } = useWriteContract({
+    mutation: {
+      onMutate: () => {
+        console.log('🚀 Starting release all transaction')
+        toast.loading('Preparing transaction...', { id: 'release-all' })
+      },
+      onSuccess: (hash: `0x${string}`) => {
+        console.log('✅ Release all transaction sent:', { hash })
+        setTxHash(hash)
+        toast.loading('Transaction sent, waiting for confirmation...', { id: 'release-all' })
+      },
+      onError: (err: any) => {
+        const errorMessage = decodeContractError(err)
+        console.error('❌ Release all failed:', { error: errorMessage })
+        setIsReleasing(false)
+        setTxHash(undefined)
+        toast.error(errorMessage, { id: 'release-all' })
+      }
+    }
+  })
+
+  const { isLoading: isConfirming, isError, error: txError } = useWaitForTransactionReceipt({
+    hash: txHash,
+    confirmations: 1,
+    onSuccess: () => {
+      toast.success('All tokens released successfully!', { id: 'release-all' })
+      setTimeout(() => window.location.reload(), 2000)
+    }
+  })
+
+  useEffect(() => {
+    if (isError && txError) {
+      const errorMessage = decodeContractError(txError)
+      setIsReleasing(false)
+      setTxHash(undefined)
+      toast.error(errorMessage, { id: 'release-all' })
+    }
+  }, [isError, txError])
+
+  const handleReleaseAll = async () => {
+    try {
+      setIsReleasing(true)
+      await writeContract({
+        address: SALE_CONTRACT_ADDRESS as `0x${string}`,
+        abi: FXFSaleABI,
+        functionName: 'releaseAllVestedTokens',
+        args: []
+      })
+    } catch (error) {
+      console.error('Release all error:', error)
+      setIsReleasing(false)
+      setTxHash(undefined)
+      toast.error(decodeContractError(error), { id: 'release-all' })
+    }
+  }
+
+  const getButtonText = () => {
+    if (isPending) return 'Confirm in Wallet...'
+    if (isConfirming) return 'Confirming...'
+    if (isReleasing) return 'Releasing...'
+    return 'Release All'
+  }
+
+  return (
+    <button 
+      onClick={handleReleaseAll}
+      disabled={isReleasing || isConfirming || isPending}
+      className="release-all-button"
+    >
+      {getButtonText()}
+      <style jsx>{`
+        .release-all-button {
+          background: #2563eb;
+          color: white;
+          border: none;
+          border-radius: 6px;
+          padding: 8px 16px;
+          font-size: 14px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .release-all-button:hover:not(:disabled) {
+          background: #1d4ed8;
+        }
+
+        .release-all-button:disabled {
+          background: #94a3b8;
+          cursor: not-allowed;
+          opacity: 0.7;
+        }
+      `}</style>
+    </button>
+  )
+}
+
 export default function UserVestingInfo() {
   const mounted = useClientMounted()
   const { address: userAddress } = useAccount()
@@ -454,9 +556,12 @@ export default function UserVestingInfo() {
       />
       <div className="title-row">
         <h2 className="title">Your Vesting Information</h2>
-        <button onClick={handleManualRefresh} className="refresh-button">
-          Refresh
-        </button>
+        <div className="button-group">
+          <ReleaseAllButton />
+          <button onClick={handleManualRefresh} className="refresh-button">
+            Refresh
+          </button>
+        </div>
       </div>
       
       <div className="raffles-grid">
@@ -674,6 +779,12 @@ export default function UserVestingInfo() {
           background: #94a3b8;
           cursor: not-allowed;
           opacity: 0.7;
+        }
+
+        .button-group {
+          display: flex;
+          gap: 12px;
+          align-items: center;
         }
       `}</style>
     </div>
