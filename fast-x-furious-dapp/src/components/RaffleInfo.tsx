@@ -3,7 +3,7 @@
 import { useSaleContractRead } from '@/hooks/useSaleContract'
 import { useClientMounted } from "@/hooks/useClientMount"
 import { formatUnits } from 'viem'
-import { useReadContracts } from 'wagmi'
+import { useReadContracts, useAccount } from 'wagmi'
 import { useMemo, useState } from 'react'
 import FXFSaleABI from '../abi/FXFSale.json'
 import BuyRaffleModal from './BuyRaffleModal'
@@ -32,6 +32,9 @@ export default function RaffleInfo() {
     ticketPrice: bigint
     prize: string
   } | null>(null)
+  
+  const { address } = useAccount()
+  const isWalletConnected = !!address
 
   // Get current raffle ID
   const { data: currentRaffleId } = useSaleContractRead('currentRaffleId')
@@ -219,13 +222,14 @@ export default function RaffleInfo() {
                 <div className="buy-section">
                   <button 
                     className="buy-button"
+                    disabled={!isWalletConnected}
                     onClick={() => setSelectedRaffle({
                       id: index + 1,
                       ticketPrice: safeRaffle.ticketPrice,
                       prize: safeRaffle.prize
                     })}
                   >
-                    Buy Tickets
+                    {!isWalletConnected ? 'Connect Wallet' : 'Buy Tickets'}
                   </button>
                 </div>
               )}
@@ -419,6 +423,14 @@ export default function RaffleInfo() {
 
         .buy-button:active {
           transform: translateY(0);
+          box-shadow: none;
+        }
+
+        .buy-button:disabled {
+          background: #E5E7EB;
+          color: #9CA3AF;
+          cursor: not-allowed;
+          transform: none;
           box-shadow: none;
         }
 

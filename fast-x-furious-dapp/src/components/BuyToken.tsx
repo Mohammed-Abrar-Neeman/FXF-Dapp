@@ -173,6 +173,9 @@ export default function BuyToken() {
   // Add this state for error message
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
+  // Add this check for wallet connection
+  const isWalletConnected = !!address
+
   // Update the handleSubmit function to check balance before submitting
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -358,10 +361,11 @@ export default function BuyToken() {
           
           <button
             type="submit"
-            disabled={isPurchaseLoading || isPurchasePending || isPending || isExceedingBalance()}
+            disabled={!isWalletConnected || isPurchaseLoading || isPurchasePending || isPending || isExceedingBalance()}
             className="buy-button"
           >
-            {isPending ? 'Confirm in Wallet...' :
+            {!isWalletConnected ? 'Connect Wallet' :
+             isPending ? 'Confirm in Wallet...' :
              isPurchasePending ? 'Confirming...' :
              isPurchaseLoading ? 'Preparing...' :
              isExceedingBalance() ? `Insufficient ${paymentMethod}` :
@@ -369,6 +373,8 @@ export default function BuyToken() {
           </button>
         </form>
       </div>
+
+      
 
       <style jsx>{`
         .buy-token-container {
@@ -570,6 +576,13 @@ export default function BuyToken() {
           font-size: 14px;
           margin-top: 12px;
           text-align: center;
+        }
+
+        .wallet-message {
+          text-align: center;
+          color: #6B7280;
+          font-size: 14px;
+          margin-top: 12px;
         }
 
         @media (max-width: 768px) {
