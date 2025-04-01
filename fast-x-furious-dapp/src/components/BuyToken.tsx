@@ -155,8 +155,36 @@ export default function BuyToken() {
     }
   }, [purchaseData])
 
+  // Add this function to check if amount exceeds balance
+  const isExceedingBalance = () => {
+    if (!inputAmount || inputAmount === '0') return false
+    
+    try {
+      const amount = Number(inputType === 'PAYMENT' ? inputAmount : paymentAmount)
+      const maxAmount = Number(getMaxAmount(paymentMethod))
+      
+      return amount > maxAmount
+    } catch (error) {
+      console.error('Error checking balance:', error)
+      return false
+    }
+  }
+
+  // Add this state for error message
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+  // Update the handleSubmit function to check balance before submitting
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Clear previous error
+    setErrorMessage(null)
+    
+    // Check if amount exceeds balance
+    if (isExceedingBalance()) {
+      setErrorMessage(`Insufficient ${paymentMethod} balance`)
+      return
+    }
     
     try {
       const tokenAddress = paymentMethod === 'ETH' ? ETH_ADDRESS :
@@ -198,6 +226,15 @@ export default function BuyToken() {
     }
   }
 
+  // Add effect to check balance when input changes
+  useEffect(() => {
+    if (isExceedingBalance()) {
+      setErrorMessage(`Insufficient ${paymentMethod} balance`)
+    } else {
+      setErrorMessage(null)
+    }
+  }, [inputAmount, inputType, paymentMethod, paymentAmount])
+
   // Update the formatLargeNumber function
   const formatLargeNumber = (value: string | number) => {
     // Handle empty or invalid inputs
@@ -222,43 +259,31 @@ export default function BuyToken() {
 
   return (
     <div className="buy-token-container">
-      <h3 className="title">Buy FXF Tokens</h3>
-      <form onSubmit={handleSubmit} className="buy-form">
-        <div className="swap-card">
-          {/* From Section */}
-          <div className="swap-section">
-            <div className="swap-header">
-              <span>From</span>
-              <div className="balance-section">
-                <span className="balance">Balance: {getBalanceForMethod(paymentMethod)}</span>
-                <button
-                  type="button"
-                  className="max-button"
-                  onClick={() => {
-                    setInputType('PAYMENT')
-                    setInputAmount(getMaxAmount(paymentMethod))
-                  }}
-                >
-                  MAX
-                </button>
+      <div className="buy-token-box">
+        <h3 className="title">Buy FXF Tokens</h3>
+        
+        <form onSubmit={handleSubmit} className="buy-form">
+          <div className="swap-card">
+            {/* From Section */}
+            <div className="swap-section">
+              <div className="swap-header">
+                <span>From</span>
+                <div className="balance-section">
+                  <span className="balance">Balance: {getBalanceForMethod(paymentMethod)}</span>
+                  <button
+                    type="button"
+                    className="max-button"
+                    onClick={() => {
+                      setInputType('PAYMENT')
+                      setInputAmount(getMaxAmount(paymentMethod))
+                    }}
+                  >
+                    MAX
+                  </button>
+                </div>
               </div>
-            </div>
-            <div className="input-section">
-              <input
-                type="text"
-                inputMode="decimal"
-                pattern="[0-9]*[.]?[0-9]*"
-                value={formatLargeNumber(inputType === 'PAYMENT' ? inputAmount : paymentAmount)}
-                onChange={(e) => {
-                  const value = e.target.value.replace(/[^0-9.]/g, '')
-                  if (value === '' || /^\d*\.?\d*$/.test(value)) {
-                    setInputType('PAYMENT')
-                    setInputAmount(value)
-                  }
-                }}
-                placeholder="0.00"
-                required
-              />
+              
+              {/* Token Selection Buttons - Moved above input */}
               <div className="token-select">
                 {['ETH', 'USDC', 'USDT'].map((method) => (
                   <button
@@ -271,226 +296,310 @@ export default function BuyToken() {
                   </button>
                 ))}
               </div>
+              
+              {/* Input Field - Now below token selection */}
+              <div className="input-section">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  pattern="[0-9]*[.]?[0-9]*"
+                  value={formatLargeNumber(inputType === 'PAYMENT' ? inputAmount : paymentAmount)}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^0-9.]/g, '')
+                    if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                      setInputType('PAYMENT')
+                      setInputAmount(value)
+                    }
+                  }}
+                  placeholder="0.00"
+                  required
+                />
+              </div>
             </div>
-          </div>
 
-          {/* Swap Arrow */}
-          <div className="swap-arrow">↓</div>
+            {/* Swap Arrow */}
+            <div className="swap-arrow">↓</div>
 
-          {/* To Section */}
-          <div className="swap-section">
-            <div className="swap-header">
-              <span>To</span>
-            </div>
-            <div className="input-section">
-              <input
-                type="text"
-                inputMode="decimal"
-                pattern="[0-9]*[.]?[0-9]*"
-                value={formatLargeNumber(inputType === 'FXF' ? inputAmount : fxfAmount)}
-                onChange={(e) => {
-                  const value = e.target.value.replace(/[^0-9.]/g, '')
-                  if (value === '' || /^\d*\.?\d*$/.test(value)) {
-                    setInputType('FXF')
-                    setInputAmount(value)
-                  }
-                }}
-                placeholder="0.00"
-                required
-              />
+            {/* To Section */}
+            <div className="swap-section">
+              <div className="swap-header">
+                <span>To</span>
+              </div>
+              
+              {/* Token Display - Moved above input */}
               <div className="token-display">FXF</div>
+              
+              {/* Input Field - Now below token display */}
+              <div className="input-section">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  pattern="[0-9]*[.]?[0-9]*"
+                  value={formatLargeNumber(inputType === 'FXF' ? inputAmount : fxfAmount)}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^0-9.]/g, '')
+                    if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                      setInputType('FXF')
+                      setInputAmount(value)
+                    }
+                  }}
+                  placeholder="0.00"
+                  required
+                />
+              </div>
             </div>
           </div>
-        </div>
 
-        <button
-          type="submit"
-          disabled={isPurchaseLoading || isPurchasePending || isPending}
-          className="buy-button"
-        >
-          {isPending ? 'Confirm in Wallet...' :
-           isPurchasePending ? 'Confirming...' :
-           isPurchaseLoading ? 'Preparing...' :
-           'Buy Tokens'}
-        </button>
+          {errorMessage && (
+            <div className="error-message">
+              {errorMessage}
+            </div>
+          )}
+          
+          <button
+            type="submit"
+            disabled={isPurchaseLoading || isPurchasePending || isPending || isExceedingBalance()}
+            className="buy-button"
+          >
+            {isPending ? 'Confirm in Wallet...' :
+             isPurchasePending ? 'Confirming...' :
+             isPurchaseLoading ? 'Preparing...' :
+             isExceedingBalance() ? `Insufficient ${paymentMethod}` :
+             'Buy Tokens'}
+          </button>
+        </form>
+      </div>
 
-        <style jsx>{`
+      <style jsx>{`
+        .buy-token-container {
+          width: 100%;
+          margin: 80px 0;
+          display: flex;
+          justify-content: center;
+        }
+
+        .buy-token-box {
+          max-width: 480px;
+          width: 100%;
+          background: white;
+          border-radius: 20px;
+          padding: 24px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+          border: 1px solid #E5E7EB;
+        }
+
+        .title {
+          font-size: 22px;
+          font-weight: 600;
+          color: #1F2937;
+          margin-bottom: 24px;
+          text-align: center;
+          position: relative;
+        }
+
+        .title:after {
+          content: '';
+          position: absolute;
+          bottom: -10px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 60px;
+          height: 3px;
+          background: #2563EB;
+          border-radius: 2px;
+        }
+
+        .swap-card {
+          background: white;
+          border-radius: 16px;
+          padding: 16px;
+          border: 1px solid #E5E7EB;
+          margin-bottom: 20px;
+        }
+
+        .swap-section {
+          background: #F9FAFB;
+          border: 1px solid #E5E7EB;
+          border-radius: 12px;
+          padding: 16px;
+          margin-bottom: 4px;
+        }
+
+        .swap-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 12px;
+          color: #6B7280;
+          font-size: 14px;
+        }
+
+        .balance {
+          color: #374151;
+          font-weight: 500;
+        }
+
+        .input-section {
+          display: flex;
+          align-items: center;
+          width: 100%;
+        }
+
+        .input-section input {
+          width: 100%;
+          background: transparent;
+          border: none;
+          color: #1F2937;
+          font-size: 24px;
+          font-family: monospace;
+          outline: none;
+          padding: 4px 0;
+          text-align: left;
+        }
+
+        .token-select {
+          display: flex;
+          gap: 8px;
+          margin-bottom: 12px;
+          justify-content: center;
+        }
+
+        .token-button {
+          background: white;
+          border: 1px solid #E5E7EB;
+          border-radius: 8px;
+          color: #374151;
+          cursor: pointer;
+          font-size: 14px;
+          font-weight: 500;
+          padding: 6px 12px;
+          transition: all 0.2s;
+        }
+
+        .token-button:hover {
+          background: #F3F4F6;
+          border-color: #D1D5DB;
+        }
+
+        .token-button.active {
+          background: #2563EB;
+          border-color: #2563EB;
+          color: white;
+        }
+
+        .token-display {
+          margin-bottom: 12px;
+          display: block;
+          text-align: center;
+          width: fit-content;
+          margin-left: auto;
+          margin-right: auto;
+        }
+
+        .swap-arrow {
+          color: #9CA3AF;
+          font-size: 24px;
+          text-align: center;
+          margin: 8px 0;
+          background: white;
+          width: 40px;
+          height: 40px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 50%;
+          border: 1px solid #E5E7EB;
+          margin: 8px auto;
+        }
+
+        .buy-button {
+          width: 100%;
+          max-width: 300px;
+          background: #2563EB;
+          border: none;
+          border-radius: 12px;
+          color: white;
+          cursor: pointer;
+          font-size: 16px;
+          font-weight: 500;
+          margin: 16px auto 0;
+          padding: 12px;
+          transition: all 0.2s;
+          display: block;
+        }
+
+        .buy-button:hover:not(:disabled) {
+          background: #1D4ED8;
+        }
+
+        .buy-button:disabled {
+          background: #E5E7EB;
+          color: #9CA3AF;
+          cursor: not-allowed;
+        }
+
+        .balance-section {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .max-button {
+          background: transparent;
+          border: 1px solid #E5E7EB;
+          border-radius: 4px;
+          color: #2563EB;
+          cursor: pointer;
+          font-size: 12px;
+          font-weight: 600;
+          padding: 2px 6px;
+          transition: all 0.2s;
+        }
+
+        .max-button:hover {
+          background: #EFF6FF;
+          border-color: #2563EB;
+        }
+
+        .error-message {
+          background: #FEF2F2;
+          border: 1px solid #FCA5A5;
+          color: #B91C1C;
+          padding: 8px 12px;
+          border-radius: 8px;
+          font-size: 14px;
+          margin-top: 12px;
+          text-align: center;
+        }
+
+        @media (max-width: 768px) {
           .buy-token-container {
-            max-width: 480px;
-            margin: 32px auto;
-            width: 100%;
+            margin: 60px 16px;
           }
-
-          .title {
-            font-size: 20px;
-            font-weight: 600;
-            color: #1F2937;
-            margin-bottom: 16px;
-            text-align: center;
+          
+          .buy-token-box {
+            padding: 20px;
           }
+        }
 
-          .swap-card {
-            background: white;
-            border-radius: 16px;
-            padding: 16px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            border: 1px solid #E5E7EB;
-          }
-
-          .swap-section {
-            background: #F9FAFB;
-            border: 1px solid #E5E7EB;
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 4px;
-          }
-
-          .swap-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-            color: #6B7280;
-            font-size: 14px;
-          }
-
-          .balance {
-            color: #374151;
-            font-weight: 500;
-          }
-
+        @media (max-width: 480px) {
           .input-section {
-            display: flex;
-            align-items: center;
-            gap: 12px;
+            flex-direction: column;
+            align-items: stretch;
           }
-
+          
           .input-section input {
-            flex: 1;
-            background: transparent;
-            border: none;
-            color: #1F2937;
-            font-size: 24px;
-            font-family: monospace;
-            outline: none;
-            padding: 0;
-            text-align: left;
-            width: 0;
-            min-width: 0;
-          }
-
-          .input-section input::placeholder {
-            color: #9CA3AF;
-          }
-
-          .token-select {
-            display: flex;
-            gap: 8px;
-          }
-
-          .token-button {
-            background: white;
-            border: 1px solid #E5E7EB;
-            border-radius: 8px;
-            color: #374151;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            padding: 6px 12px;
-            transition: all 0.2s;
-          }
-
-          .token-button:hover {
-            background: #F3F4F6;
-            border-color: #D1D5DB;
-          }
-
-          .token-button.active {
-            background: #2563EB;
-            border-color: #2563EB;
-            color: white;
-          }
-
-          .token-display {
-            background: white;
-            border: 1px solid #E5E7EB;
-            border-radius: 8px;
-            color: #374151;
-            font-size: 14px;
-            font-weight: 500;
-            padding: 6px 12px;
-          }
-
-          .swap-arrow {
-            color: #9CA3AF;
-            font-size: 24px;
-            text-align: center;
-            margin: 8px 0;
-            background: white;
-            width: 40px;
-            height: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-            border: 1px solid #E5E7EB;
-            margin: 8px auto;
-          }
-
-          .buy-button {
             width: 100%;
-            background: #2563EB;
-            border: none;
-            border-radius: 12px;
-            color: white;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: 500;
-            margin-top: 16px;
-            padding: 12px;
-            transition: all 0.2s;
+            margin-bottom: 8px;
+            font-size: 18px;
           }
-
-          .buy-button:hover:not(:disabled) {
-            background: #1D4ED8;
+          
+          .token-select, .token-display {
+            margin-left: 0;
+            align-self: flex-end;
           }
-
-          .buy-button:disabled {
-            background: #E5E7EB;
-            color: #9CA3AF;
-            cursor: not-allowed;
-          }
-
-          .balance-section {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-          }
-
-          .max-button {
-            background: transparent;
-            border: 1px solid #E5E7EB;
-            border-radius: 4px;
-            color: #2563EB;
-            cursor: pointer;
-            font-size: 12px;
-            font-weight: 600;
-            padding: 2px 6px;
-            transition: all 0.2s;
-          }
-
-          .max-button:hover {
-            background: #EFF6FF;
-            border-color: #2563EB;
-          }
-
-          @media (max-width: 480px) {
-            .buy-token-container {
-              padding: 0 16px;
-            }
-          }
-        `}</style>
-      </form>
+        }
+      `}</style>
     </div>
   )
 } 
