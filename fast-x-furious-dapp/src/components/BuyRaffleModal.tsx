@@ -5,6 +5,7 @@ import { formatUnits, parseUnits } from 'viem'
 import { useAccount, useBalance, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
 import { useSaleContractRead, useSaleContractWrite } from '@/hooks/useSaleContract'
 import FXFSaleABI from '@/abi/FXFSale.json'
+import { toast } from 'react-hot-toast'
 
 const USDC_ADDRESS = '0x6DCb60F143Ba8F34e87BC3EceaE49960D490D905'
 const USDT_ADDRESS = '0x4754EF95d4bcBDfF762f2D75CbaD0429967ced46'
@@ -18,6 +19,7 @@ interface BuyRaffleModalProps {
   raffleId: number
   ticketPrice: bigint
   prize: string
+  onSuccess?: () => void
 }
 
 // Remove the erc20ABI import and define the ABI we need
@@ -70,7 +72,7 @@ const ERC20_ABI = [
   }
 ] as const;
 
-export default function BuyRaffleModal({ isOpen, onClose, raffleId, ticketPrice, prize }: BuyRaffleModalProps) {
+export default function BuyRaffleModal({ isOpen, onClose, raffleId, ticketPrice, prize, onSuccess }: BuyRaffleModalProps) {
   // Basic state
   const [quantity, setQuantity] = useState<number>(1)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('ETH')
@@ -338,16 +340,22 @@ export default function BuyRaffleModal({ isOpen, onClose, raffleId, ticketPrice,
   // Add purchase contract interaction
   const { writeContract: buyRaffle } = useWriteContract({
     mutation: {
+      onMutate: () => {
+        setIsPurchaseLoading(true)
+        toast.loading('Preparing purchase...', { id: 'purchase' })
+      },
       onSuccess: (hash: `0x${string}`) => {
         console.log('✅ Purchase transaction sent:', {
           hash,
           timestamp: new Date().toISOString()
         })
         setPurchaseTxHash(hash)
+        toast.loading('Transaction sent, waiting for confirmation...', { id: 'purchase' })
       },
       onError: (error) => {
         console.error('❌ Purchase failed:', error)
         setIsPurchaseLoading(false)
+        toast.error('Failed to send transaction', { id: 'purchase' })
       }
     }
   })
@@ -363,21 +371,22 @@ export default function BuyRaffleModal({ isOpen, onClose, raffleId, ticketPrice,
   useEffect(() => {
     if (!purchaseData) return
 
-    console.log('📝 Purchase receipt:', {
-      data: purchaseData,
-      status: purchaseData.status,
-      timestamp: new Date().toISOString()
-    })
-
-    const isSuccess = purchaseData.status === 'success' || purchaseData.status === 1 || purchaseData.status === '0x1'
+    const isSuccess = purchaseData.status === 'success' || purchaseData.status === 1
     
     if (isSuccess) {
       console.log('🎉 Purchase confirmed!')
+      toast.success('Purchase successful!', { id: 'purchase' })
       setIsPurchaseLoading(false)
       setPurchaseTxHash(undefined)
-      onClose() // Close modal on success
+      onClose()
+      
+      // Add a small delay before reloading
+      setTimeout(() => {
+        window.location.reload()
+      }, 1500) // 1.5 seconds delay to allow toast to be visible
     } else {
       console.error('❌ Purchase reverted:', purchaseData.status)
+      toast.error('Purchase failed', { id: 'purchase' })
       setIsPurchaseLoading(false)
       setPurchaseTxHash(undefined)
     }

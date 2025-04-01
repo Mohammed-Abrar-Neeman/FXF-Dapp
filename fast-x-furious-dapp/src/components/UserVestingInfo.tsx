@@ -141,7 +141,13 @@ function ReleaseButton({ raffleId, isComplete }: { raffleId: bigint, isComplete:
   const [txHash, setTxHash] = useState<`0x${string}` | undefined>()
   const { address: userAddress } = useAccount()
 
-  const { writeContract, isPending, error: writeError } = useWriteContract({
+  const { 
+    writeContract, 
+    isPending, 
+    error: writeError, 
+    isSuccess: isWriteSuccess, 
+    data: writeData 
+  } = useWriteContract({
     mutation: {
       onMutate: () => {
         console.log('🚀 Starting release transaction:', {
@@ -223,6 +229,16 @@ function ReleaseButton({ raffleId, isComplete }: { raffleId: bigint, isComplete:
       toast.error(errorMessage, { id: 'release' })
     }
   }, [isError, txError, txHash])
+
+  // Update success effect to use correct variables
+  useEffect(() => {
+    if (isWriteSuccess && writeData?.status === 1) {
+      // Wait for success toast to be visible then reload
+      setTimeout(() => {
+        window.location.reload()
+      }, 1500)
+    }
+  }, [isWriteSuccess, writeData])
 
   const handleRelease = async () => {
     try {
@@ -316,7 +332,13 @@ function ReleaseAllButton() {
   const [txHash, setTxHash] = useState<`0x${string}` | undefined>()
   const { address: userAddress } = useAccount()
 
-  const { writeContract, isPending } = useWriteContract({
+  const { 
+    writeContract, 
+    isPending, 
+    error: writeError, 
+    isSuccess: isWriteSuccess, 
+    data: writeData 
+  } = useWriteContract({
     mutation: {
       onMutate: () => {
         console.log('🚀 Starting release all transaction')
@@ -354,6 +376,15 @@ function ReleaseAllButton() {
       toast.error(errorMessage, { id: 'release-all' })
     }
   }, [isError, txError])
+
+  // Update success effect to use correct variables
+  useEffect(() => {
+    if (isWriteSuccess && writeData?.status === 1) {
+      setTimeout(() => {
+        window.location.reload()
+      }, 1500)
+    }
+  }, [isWriteSuccess, writeData])
 
   const handleReleaseAll = async () => {
     try {
@@ -584,7 +615,7 @@ export default function UserVestingInfo() {
                     </div>
                     <div className="info-row">
                       <span>Vested Amount:</span>
-                      <span>{formatFxfAmount(BigInt(purchase.vestedAmount))}</span>
+                      <span>{formatFxfAmount(BigInt(purchase.amount))}</span>
                     </div>
                     <div className="info-row">
                       <span>Amount to be Released:</span>
