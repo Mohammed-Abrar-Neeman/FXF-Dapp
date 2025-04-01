@@ -222,11 +222,11 @@ export default function UserVestingInfo() {
                     </div>
                     <div className="info-row">
                       <span>Vested Amount:</span>
-                      <span>{formatFxfAmount(BigInt(purchase.amount - purchase.releasedAmount))}</span>
+                      <span>{formatFxfAmount(BigInt(purchase.vestedAmount))}</span>
                     </div>
                     <div className="info-row">
                       <span>Amount to be Released:</span>
-                      <span>{formatFxfAmount(purchase.vestedAmount)}</span>
+                      <span>{formatFxfAmount(BigInt(purchase.vestedAmount) - BigInt(purchase.releasedAmount))}</span>
                     </div>
                     <div className="info-row">
                       <span>Start Date:</span>
