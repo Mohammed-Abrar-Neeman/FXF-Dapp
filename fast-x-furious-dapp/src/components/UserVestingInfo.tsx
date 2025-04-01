@@ -1,11 +1,14 @@
 'use client'
 
-import { useSaleContractRead } from '@/hooks/useSaleContract'
+import { useSaleContractRead, useSaleContractWrite } from '@/hooks/useSaleContract'
 import { useClientMounted } from "@/hooks/useClientMount"
 import { formatUnits } from 'viem'
 import { useAccount, useReadContracts } from 'wagmi'
 import { useMemo, useState, useEffect, useCallback } from 'react'
 import FXFSaleABI from '../abi/FXFSale.json'
+import { useWaitForTransactionReceipt } from 'wagmi'
+import { useWriteContract } from 'wagmi'
+import { Toaster, toast } from 'react-hot-toast'
 
 const SALE_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_SALE_CONTRACT_ADDRESS || ''
 
@@ -37,7 +40,7 @@ const calculateRemainingTime = (startTime: bigint) => {
   const minutes = Number((remaining % 3600n) / 60n)
   const seconds = Number(remaining % 60n)
 
-  return { days, hours, minutes, seconds, isComplete: false }
+  return { days, hours, minutes, seconds, isComplete: true }
 }
 
 function VestingCountdown({ startTime }: { startTime: bigint }) {
@@ -73,6 +76,238 @@ function VestingCountdown({ startTime }: { startTime: bigint }) {
     <span className="countdown">
       {remaining.days}d {format(remaining.hours)}:{format(remaining.minutes)}:{format(remaining.seconds)}
     </span>
+  )
+}
+
+const decodeContractError = (error: any): string => {
+  try {
+    console.log('🔍 Raw error:', error)
+
+    // Helper to clean error message
+    const cleanErrorMessage = (msg: string): string => {
+      // Remove common prefixes
+      const prefixes = [
+        'execution reverted:',
+        'reverted:',
+        'FxF:',
+        'Error:'
+      ]
+      
+      let cleaned = msg.trim()
+      for (const prefix of prefixes) {
+        if (cleaned.includes(prefix)) {
+          cleaned = cleaned.split(prefix).pop()?.trim() || cleaned
+        }
+      }
+      return cleaned
+    }
+
+    // Try to get error from different possible locations
+    let errorMessage: string | undefined
+
+    // Check viem error format first
+    if (error?.shortMessage) {
+      errorMessage = cleanErrorMessage(error.shortMessage)
+    }
+    // Check error data
+    else if (error?.data) {
+      errorMessage = cleanErrorMessage(error.data.toString())
+    }
+    // Check error message
+    else if (error?.message) {
+      errorMessage = cleanErrorMessage(error.message)
+    }
+    // Check nested error
+    else if (error?.error?.message) {
+      errorMessage = cleanErrorMessage(error.error.message)
+    }
+
+    // Log the extracted message
+    console.log('📝 Extracted error:', {
+      original: error?.message || error?.shortMessage || error?.data,
+      cleaned: errorMessage,
+      timestamp: new Date().toISOString()
+    })
+
+    return errorMessage || 'Unknown error'
+  } catch (e) {
+    console.error('Error decoding contract error:', e)
+    return 'Unknown error'
+  }
+}
+
+function ReleaseButton({ raffleId, isComplete }: { raffleId: bigint, isComplete: boolean }) {
+  const [isReleasing, setIsReleasing] = useState(false)
+  const [txHash, setTxHash] = useState<`0x${string}` | undefined>()
+  const { address: userAddress } = useAccount()
+
+  const { writeContract, isPending, error: writeError } = useWriteContract({
+    mutation: {
+      onMutate: () => {
+        console.log('🚀 Starting release transaction:', {
+          raffleId: raffleId.toString(),
+          status: 'pending',
+          timestamp: new Date().toISOString()
+        })
+        toast.loading('Preparing transaction...', { id: 'release' })
+      },
+      onSuccess: (hash: `0x${string}`) => {
+        console.log('✅ Release transaction sent:', {
+          hash,
+          status: 'sent',
+          timestamp: new Date().toISOString()
+        })
+        setTxHash(hash)
+        toast.loading('Transaction sent, waiting for confirmation...', { id: 'release' })
+      },
+      onError: (err: any) => {
+        const errorMessage = decodeContractError(err)
+        console.error('❌ Contract error:', {
+          message: errorMessage,
+          raw: err,
+          timestamp: new Date().toISOString()
+        })
+        setIsReleasing(false)
+        setTxHash(undefined)
+        toast.error(errorMessage, { id: 'release' })
+      }
+    }
+  })
+
+  // Monitor transaction with detailed logging
+  const { 
+    isLoading: isConfirming, 
+    data: txData, 
+    isSuccess,
+    isError,
+    error: txError
+  } = useWaitForTransactionReceipt({
+    hash: txHash,
+    confirmations: 1,
+    onSuccess: (data) => {
+      console.log('✅ Transaction receipt:', {
+        hash: txHash,
+        status: data.status,
+        blockNumber: data.blockNumber,
+        from: data.from,
+        to: data.to,
+        logs: data.logs,
+        timestamp: new Date().toISOString()
+      })
+    }
+  })
+
+  // Log state changes
+  useEffect(() => {
+    if (isConfirming) {
+      console.log('⏳ Transaction confirming:', {
+        hash: txHash,
+        timestamp: new Date().toISOString()
+      })
+      toast.loading('Confirming transaction...', { id: 'release' })
+    }
+  }, [isConfirming, txHash])
+
+  // Update transaction error handling
+  useEffect(() => {
+    if (isError && txError) {
+      const errorMessage = decodeContractError(txError)
+      // console.error('💥 Transaction error:', {
+      //   message: errorMessage,
+      //   hash: txHash,
+      //   raw: txError,
+      //   timestamp: new Date().toISOString()
+      // })
+      setIsReleasing(false)
+      setTxHash(undefined)
+      toast.error(errorMessage, { id: 'release' })
+    }
+  }, [isError, txError, txHash])
+
+  const handleRelease = async () => {
+    try {
+      if (writeError) {
+        console.error('Previous write error:', writeError)
+      }
+      
+      // Log contract call details
+      console.log('📝 Release tokens contract call:', {
+        contract: SALE_CONTRACT_ADDRESS,
+        function: 'releaseVestedTokens',
+        params: {
+          raffleId: raffleId.toString(),
+          caller: userAddress,
+        },
+        timestamp: new Date().toISOString()
+      })
+      
+      setIsReleasing(true)
+      
+      await writeContract({
+        address: SALE_CONTRACT_ADDRESS as `0x${string}`,
+        abi: FXFSaleABI,
+        functionName: 'releaseVestedTokens',
+        args: [raffleId]
+      })
+    } catch (error) {
+      console.error('Release call error:', {
+        error,
+        contract: SALE_CONTRACT_ADDRESS,
+        function: 'releaseVestedTokens',
+        params: {
+          raffleId: raffleId.toString(),
+          caller: userAddress,
+        },
+        timestamp: new Date().toISOString()
+      })
+      setIsReleasing(false)
+      setTxHash(undefined)
+      toast.error(`Failed to release: ${decodeContractError(error)}`, { id: 'release' })
+    }
+  }
+
+  const getButtonText = () => {
+    if (isPending) return 'Confirm in Wallet...'
+    if (isConfirming) return 'Confirming...'
+    if (isReleasing) return 'Releasing...'
+    return 'Release Tokens'
+  }
+
+  if (!isComplete) return null
+
+  return (
+    <button 
+      onClick={handleRelease}
+      disabled={isReleasing || isConfirming || isPending}
+      className="release-button"
+    >
+      {getButtonText()}
+      <style jsx>{`
+        .release-button {
+          background: #2563eb;
+          color: white;
+          border: none;
+          border-radius: 6px;
+          padding: 8px 16px;
+          font-size: 14px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s;
+          width: 100%;
+          max-width: 200px;
+        }
+
+        .release-button:hover:not(:disabled) {
+          background: #1d4ed8;
+        }
+
+        .release-button:disabled {
+          background: #94a3b8;
+          cursor: not-allowed;
+          opacity: 0.7;
+        }
+      `}</style>
+    </button>
   )
 }
 
@@ -195,6 +430,28 @@ export default function UserVestingInfo() {
 
   return (
     <div className="vesting-info">
+      <Toaster 
+        position="top-right"
+        toastOptions={{
+          duration: 4000,
+          style: {
+            background: '#333',
+            color: '#fff',
+          },
+          success: {
+            duration: 3000,
+            style: {
+              background: '#10B981',
+            },
+          },
+          error: {
+            duration: 4000,
+            style: {
+              background: '#EF4444',
+            },
+          },
+        }}
+      />
       <div className="title-row">
         <h2 className="title">Your Vesting Information</h2>
         <button onClick={handleManualRefresh} className="refresh-button">
@@ -239,6 +496,13 @@ export default function UserVestingInfo() {
                     <div className="info-row countdown-row">
                       <span>Time Remaining:</span>
                       <VestingCountdown startTime={BigInt(purchase.startTime)} />
+                    </div>
+
+                    <div className="release-row">
+                      <ReleaseButton 
+                        raffleId={raffle.raffleId} 
+                        isComplete={calculateRemainingTime(BigInt(purchase.startTime)).isComplete}
+                      />
                     </div>
                   </div>
                 </div>
@@ -378,6 +642,38 @@ export default function UserVestingInfo() {
 
         .refresh-button:hover {
           background: #e2e8f0;
+        }
+
+        .release-row {
+          margin-top: 12px;
+          padding-top: 12px;
+          border-top: 1px solid #eee;
+          display: flex;
+          justify-content: center;
+        }
+
+        .release-button {
+          background: #2563eb;
+          color: white;
+          border: none;
+          border-radius: 6px;
+          padding: 8px 16px;
+          font-size: 14px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s;
+          width: 100%;
+          max-width: 200px;
+        }
+
+        .release-button:hover:not(:disabled) {
+          background: #1d4ed8;
+        }
+
+        .release-button:disabled {
+          background: #94a3b8;
+          cursor: not-allowed;
+          opacity: 0.7;
         }
       `}</style>
     </div>
