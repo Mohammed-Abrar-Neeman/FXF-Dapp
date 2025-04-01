@@ -4,7 +4,7 @@ import { useSaleContractRead } from '@/hooks/useSaleContract'
 import { useClientMounted } from "@/hooks/useClientMount"
 import { formatUnits } from 'viem'
 import { useAccount, useReadContracts } from 'wagmi'
-import { useMemo, useState, useEffect } from 'react'
+import { useMemo, useState, useEffect, useCallback } from 'react'
 import FXFSaleABI from '../abi/FXFSale.json'
 
 const SALE_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_SALE_CONTRACT_ADDRESS || ''
@@ -80,6 +80,9 @@ export default function UserVestingInfo() {
   const mounted = useClientMounted()
   const { address: userAddress } = useAccount()
 
+  // Add refresh interval state (default 1 day in milliseconds)
+  const REFRESH_INTERVAL = 24 * 60 * 60 * 1000 // 24 hours
+
   // Get user's raffle IDs
   const { data: userRaffles } = useSaleContractRead('getUserRaffles', [userAddress || '0x0'])
 
@@ -95,10 +98,44 @@ export default function UserVestingInfo() {
     }))
   }, [userRaffles, userAddress])
 
-  // Batch fetch all vesting info
-  const { data: vestingResults } = useReadContracts({
-    contracts: vestingCalls
+  // Update your batch fetch to include refetch
+  const { data: vestingResults, refetch } = useReadContracts({
+    contracts: vestingCalls,
+    query: {
+      // Enable auto background refresh every hour
+      refetchInterval: 60 * 60 * 1000
+    }
   })
+
+  // Create a refresh function after contract setup
+  const refreshVestingData = useCallback(() => {
+    console.log('🔄 Refreshing vesting data...')
+    if (vestingResults?.length) {
+      vestingResults.forEach((result: any, index: number) => {
+        console.log(`Refreshing data for raffle ${index + 1}`)
+      })
+    }
+    // Trigger a refetch of the contract data
+    refetch?.()
+  }, [vestingResults, refetch])
+
+  // Add auto-refresh effect
+  useEffect(() => {
+    // Initial refresh
+    refreshVestingData()
+
+    // Set up interval for periodic refresh
+    const intervalId = setInterval(refreshVestingData, REFRESH_INTERVAL)
+
+    // Cleanup on unmount
+    return () => clearInterval(intervalId)
+  }, [refreshVestingData, REFRESH_INTERVAL])
+
+  // Add manual refresh function
+  const handleManualRefresh = () => {
+    console.log('🔄 Manual refresh triggered')
+    refreshVestingData()
+  }
 
   // Process results
   const raffleVestingData = useMemo(() => {
@@ -158,7 +195,12 @@ export default function UserVestingInfo() {
 
   return (
     <div className="vesting-info">
-      <h2 className="title">Your Vesting Information</h2>
+      <div className="title-row">
+        <h2 className="title">Your Vesting Information</h2>
+        <button onClick={handleManualRefresh} className="refresh-button">
+          Refresh
+        </button>
+      </div>
       
       <div className="raffles-grid">
         {raffleVestingData.map((raffle) => (
@@ -314,6 +356,28 @@ export default function UserVestingInfo() {
           .purchases-grid {
             grid-template-columns: 1fr;
           }
+        }
+
+        .title-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 24px;
+        }
+
+        .refresh-button {
+          background: #f8f9fa;
+          border: 1px solid #e2e8f0;
+          border-radius: 6px;
+          padding: 8px 16px;
+          font-size: 14px;
+          color: #1a1a1a;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .refresh-button:hover {
+          background: #e2e8f0;
         }
       `}</style>
     </div>
