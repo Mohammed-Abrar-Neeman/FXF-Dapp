@@ -372,6 +372,12 @@ contract FxFSale is
         raffle.prize = prize;
         raffle.completed = false;
         raffle.totalTickets = 0;
+        raffle.totalAmount = 0;
+        raffle.winner = address(0);
+        raffle.winningTicket = 0;
+        raffle.totalEthReceived = 0;
+        raffle.totalUsdtReceived = 0;
+        raffle.totalUsdcReceived = 0;  
 
         emit RaffleCreated(
             currentRaffleId,
@@ -429,7 +435,7 @@ contract FxFSale is
     }
 
 
-    // View functions
+    // View functions //not required duplicate
     function getRaffleInfo(uint256 raffleId) external view returns (
         uint256 ticketPrice,
         uint256 minimumTickets,

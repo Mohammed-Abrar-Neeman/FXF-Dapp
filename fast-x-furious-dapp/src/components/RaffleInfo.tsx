@@ -116,135 +116,151 @@ export default function RaffleInfo() {
     <div className="raffle-info">
       <h2 className="title">All Raffles</h2>
       
-      <div className="raffles-grid">
-        {raffleResults?.map((result, index) => {
-          if (!result.result) return null
+      {(!raffleResults || raffleResults.length === 0) ? (
+        <div className="no-raffles">
+          <div className="empty-state">
+            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+              <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+              <line x1="12" y1="22.08" x2="12" y2="12"></line>
+            </svg>
+            <h3>No Raffles Available</h3>
+            <p>There are no active raffles at the moment. Please check back later for new opportunities!</p>
+          </div>
+        </div>
+      ) : (
+        <div className="raffles-grid">
+          {raffleResults?.map((result, index) => {
+            if (!result.result) return null
 
-          // The result is an array, so we need to destructure it properly
-          const [
-            ticketPrice,
-            minimumTickets,
-            startTime,
-            prize,
-            completed,
-            totalTickets,
-            totalAmount,
-            winner,
-            winningTicket,
-            totalEthReceived,
-            totalUsdtReceived,
-            totalUsdcReceived
-          ] = result.result as any[]
+            // The result is an array, so we need to destructure it properly
+            const [
+              ticketPrice,
+              minimumTickets,
+              startTime,
+              prize,
+              completed,
+              totalTickets,
+              totalAmount,
+              winner,
+              winningTicket,
+              totalEthReceived,
+              totalUsdtReceived,
+              totalUsdcReceived
+            ] = result.result as any[]
 
-          const safeRaffle = {
-            ticketPrice: BigInt(ticketPrice?.toString() || '0'),
-            minimumTickets: BigInt(minimumTickets?.toString() || '0'),
-            startTime: BigInt(startTime?.toString() || '0'),
-            prize: prize || 'TBA',
-            completed: completed || false,
-            totalTickets: BigInt(totalTickets?.toString() || '0'),
-            totalAmount: BigInt(totalAmount?.toString() || '0'),
-            winner: winner || '0x0',
-            winningTicket: BigInt(winningTicket?.toString() || '0'),
-            totalEthReceived: BigInt(totalEthReceived?.toString() || '0'),
-            totalUsdtReceived: BigInt(totalUsdtReceived?.toString() || '0'),
-            totalUsdcReceived: BigInt(totalUsdcReceived?.toString() || '0')
-          }
+            const safeRaffle = {
+              ticketPrice: BigInt(ticketPrice?.toString() || '0'),
+              minimumTickets: BigInt(minimumTickets?.toString() || '0'),
+              startTime: BigInt(startTime?.toString() || '0'),
+              prize: prize || 'TBA',
+              completed: completed || false,
+              totalTickets: BigInt(totalTickets?.toString() || '0'),
+              totalAmount: BigInt(totalAmount?.toString() || '0'),
+              winner: winner || '0x0',
+              winningTicket: BigInt(winningTicket?.toString() || '0'),
+              totalEthReceived: BigInt(totalEthReceived?.toString() || '0'),
+              totalUsdtReceived: BigInt(totalUsdtReceived?.toString() || '0'),
+              totalUsdcReceived: BigInt(totalUsdcReceived?.toString() || '0')
+            }
 
-          // Add debug logging
-          console.log('Raffle data:', {
-            raw: result.result,
-            processed: safeRaffle
-          })
+            // Add debug logging
+            console.log('Raffle data:', {
+              raw: result.result,
+              processed: safeRaffle
+            })
 
-          return (
-            <div key={index} className={`raffle-card ${safeRaffle.completed ? 'completed' : ''}`}>
-              <div className="raffle-header">
-                <div className="header-content">
-                  <h3>Raffle #{index + 1}</h3>
-                  <span className="prize">{safeRaffle.prize}</span>
+            return (
+              <div key={index} className={`raffle-card ${safeRaffle.completed ? 'completed' : ''}`}>
+                <div className="raffle-header">
+                  <div className="header-content">
+                    <h3>Raffle #{index + 1}</h3>
+                    <span className="prize">{safeRaffle.prize}</span>
+                  </div>
+                  <span className={`status ${safeRaffle.completed ? 'completed' : 'active'}`}>
+                    {safeRaffle.completed ? 'Completed' : 'Active'}
+                  </span>
                 </div>
-                <span className={`status ${safeRaffle.completed ? 'completed' : 'active'}`}>
-                  {safeRaffle.completed ? 'Completed' : 'Active'}
-                </span>
+
+                <div className="info-grid">
+                  <div className="info-column">
+                    <div className="info-item">
+                      <label>Ticket Price</label>
+                      <span>{formatFxfAmount(safeRaffle.ticketPrice)}</span>
+                    </div>
+                    <div className="info-item">
+                      <label>Min. Tickets</label>
+                      <span>{safeRaffle.minimumTickets.toString()}</span>
+                    </div>
+                    <div className="info-item">
+                      <label>Total Tickets</label>
+                      <span>{safeRaffle.totalTickets.toString()}</span>
+                    </div>
+                  </div>
+
+                  <div className="info-column">
+                    <div className="info-item">
+                      <label>Start Time</label>
+                      <span>{formatDate(safeRaffle.startTime)}</span>
+                    </div>
+                    <div className="info-item">
+                      <label>Total Amount</label>
+                      <span>{formatFxfAmount(safeRaffle.totalAmount)}</span>
+                    </div>
+                    <div className="info-item">
+                      <label>Winner</label>
+                      <span>{formatAddress(safeRaffle.winner)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="payments-section">
+                  <div className="payments-grid">
+                    <div className="payment-item">
+                      <label>ETH</label>
+                      <span>{formatEthAmount(safeRaffle.totalEthReceived)}</span>
+                    </div>
+                    <div className="payment-item">
+                      <label>USDT</label>
+                      <span>{formatUSDAmount(safeRaffle.totalUsdtReceived)}</span>
+                    </div>
+                    <div className="payment-item">
+                      <label>USDC</label>
+                      <span>{formatUSDAmount(safeRaffle.totalUsdcReceived)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {!safeRaffle.completed && (
+                  <div className="buy-section">
+                    <button 
+                      className="buy-button"
+                      disabled={!isWalletConnected}
+                      onClick={() => setSelectedRaffle({
+                        id: index + 1,
+                        ticketPrice: safeRaffle.ticketPrice,
+                        prize: safeRaffle.prize
+                      })}
+                    >
+                      {!isWalletConnected ? 'Connect Wallet' : 'Buy Tickets'}
+                    </button>
+                  </div>
+                )}
               </div>
+            )
+          })}
+        </div>
+      )}
 
-              <div className="info-grid">
-                <div className="info-column">
-                  <div className="info-item">
-                    <label>Ticket Price</label>
-                    <span>{formatFxfAmount(safeRaffle.ticketPrice)}</span>
-                  </div>
-                  <div className="info-item">
-                    <label>Min. Tickets</label>
-                    <span>{safeRaffle.minimumTickets.toString()}</span>
-                  </div>
-                  <div className="info-item">
-                    <label>Total Tickets</label>
-                    <span>{safeRaffle.totalTickets.toString()}</span>
-                  </div>
-                </div>
-
-                <div className="info-column">
-                  <div className="info-item">
-                    <label>Start Time</label>
-                    <span>{formatDate(safeRaffle.startTime)}</span>
-                  </div>
-                  <div className="info-item">
-                    <label>Total Amount</label>
-                    <span>{formatFxfAmount(safeRaffle.totalAmount)}</span>
-                  </div>
-                  <div className="info-item">
-                    <label>Winner</label>
-                    <span>{formatAddress(safeRaffle.winner)}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="payments-section">
-                <div className="payments-grid">
-                  <div className="payment-item">
-                    <label>ETH</label>
-                    <span>{formatEthAmount(safeRaffle.totalEthReceived)}</span>
-                  </div>
-                  <div className="payment-item">
-                    <label>USDT</label>
-                    <span>{formatUSDAmount(safeRaffle.totalUsdtReceived)}</span>
-                  </div>
-                  <div className="payment-item">
-                    <label>USDC</label>
-                    <span>{formatUSDAmount(safeRaffle.totalUsdcReceived)}</span>
-                  </div>
-                </div>
-              </div>
-
-              {!safeRaffle.completed && (
-                <div className="buy-section">
-                  <button 
-                    className="buy-button"
-                    disabled={!isWalletConnected}
-                    onClick={() => setSelectedRaffle({
-                      id: index + 1,
-                      ticketPrice: safeRaffle.ticketPrice,
-                      prize: safeRaffle.prize
-                    })}
-                  >
-                    {!isWalletConnected ? 'Connect Wallet' : 'Buy Tickets'}
-                  </button>
-                </div>
-              )}
-            </div>
-          )
-        })}
-      </div>
-
-      <BuyRaffleModal
-        isOpen={!!selectedRaffle}
-        onClose={() => setSelectedRaffle(null)}
-        raffleId={selectedRaffle?.id || 0}
-        ticketPrice={selectedRaffle?.ticketPrice || BigInt(0)}
-        prize={selectedRaffle?.prize || ''}
-      />
+      {selectedRaffle && (
+        <BuyRaffleModal
+          isOpen={!!selectedRaffle}
+          onClose={() => setSelectedRaffle(null)}
+          raffleId={selectedRaffle.id}
+          ticketPrice={selectedRaffle.ticketPrice}
+          prize={selectedRaffle.prize}
+        />
+      )}
 
       <style jsx>{`
         .raffle-info {
@@ -465,6 +481,41 @@ export default function RaffleInfo() {
             font-size: 12px;
             min-height: 32px;
           }
+        }
+
+        .no-raffles {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          min-height: 300px;
+          width: 100%;
+        }
+        
+        .empty-state {
+          text-align: center;
+          padding: 40px;
+          background: #f8f9fa;
+          border-radius: 16px;
+          max-width: 500px;
+          border: 1px dashed #d1d5db;
+        }
+        
+        .empty-state svg {
+          color: #9ca3af;
+          margin-bottom: 16px;
+        }
+        
+        .empty-state h3 {
+          font-size: 18px;
+          font-weight: 600;
+          color: #374151;
+          margin-bottom: 8px;
+        }
+        
+        .empty-state p {
+          color: #6b7280;
+          font-size: 14px;
+          line-height: 1.5;
         }
       `}</style>
     </div>

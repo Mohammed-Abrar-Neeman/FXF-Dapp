@@ -113,17 +113,16 @@ export default function BuyToken() {
     mutation: {
       onMutate: () => {
         setIsPurchaseLoading(true)
-        toast.loading('Preparing purchase...', { id: 'purchase-token' })
       },
       onSuccess: (hash: `0x${string}`) => {
         console.log('✅ Purchase transaction sent:', { hash })
         setPurchaseTxHash(hash)
-        toast.loading('Transaction sent, waiting for confirmation...', { id: 'purchase-token' })
       },
       onError: (error) => {
         console.error('❌ Purchase failed:', error)
         setIsPurchaseLoading(false)
-        toast.error('Failed to send transaction', { id: 'purchase-token' })
+        setPurchaseTxHash(undefined)
+        toast.error('Failed to send transaction', { id: 'purchase-status' })
       }
     }
   })
@@ -131,29 +130,25 @@ export default function BuyToken() {
   // Monitor purchase transaction
   const { isLoading: isPurchasePending, data: purchaseData } = useWaitForTransactionReceipt({
     hash: purchaseTxHash,
-    confirmations: 1
-  })
-
-  // Handle purchase transaction completion
-  useEffect(() => {
-    if (!purchaseData) return
-
-    const isSuccess = purchaseData.status === 'success' || purchaseData.status === 1
-    
-    if (isSuccess) {
-      toast.success('Purchase successful!', { id: 'purchase-token' })
-      setIsPurchaseLoading(false)
-      setPurchaseTxHash(undefined)
-      setInputAmount('')
-      setTimeout(() => {
-        window.location.reload()
-      }, 1500)
-    } else {
-      toast.error('Purchase failed', { id: 'purchase-token' })
+    onSuccess(data) {
+      if (data.status === 1) {
+        toast.success('Purchase successful!', { id: 'purchase-status' })
+        setIsPurchaseLoading(false)
+        setPurchaseTxHash(undefined)
+        setInputAmount('')
+        setTimeout(() => window.location.reload(), 1500)
+      } else {
+        toast.error('Transaction failed', { id: 'purchase-status' })
+        setIsPurchaseLoading(false)
+        setPurchaseTxHash(undefined)
+      }
+    },
+    onError() {
+      toast.error('Transaction failed', { id: 'purchase-status' })
       setIsPurchaseLoading(false)
       setPurchaseTxHash(undefined)
     }
-  }, [purchaseData])
+  })
 
   // Add this function to check if amount exceeds balance
   const isExceedingBalance = () => {
@@ -176,7 +171,7 @@ export default function BuyToken() {
   // Add this check for wallet connection
   const isWalletConnected = !!address
 
-  // Update the handleSubmit function to check balance before submitting
+  // Update the handleSubmit function
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -186,8 +181,12 @@ export default function BuyToken() {
     // Check if amount exceeds balance
     if (isExceedingBalance()) {
       setErrorMessage(`Insufficient ${paymentMethod} balance`)
+      toast.error(`Insufficient ${paymentMethod} balance`, { id: 'purchase-status' })
       return
     }
+    
+    // Show initial loading toast
+    toast.loading('Processing purchase...', { id: 'purchase-status' })
     
     try {
       const tokenAddress = paymentMethod === 'ETH' ? ETH_ADDRESS :
@@ -201,29 +200,22 @@ export default function BuyToken() {
       const decimals = paymentMethod === 'ETH' ? 18 : 6
       const parsedAmount = parseUnits(paymentAmount, decimals)
 
-      console.log('💰 Preparing token purchase:', {
-        token: tokenAddress,
-        amount: paymentAmount,
-        parsedAmount: parsedAmount.toString(),
-        forRaffle: false,
-        raffleId: 0
-      })
-
       await buyTokens({
         address: process.env.NEXT_PUBLIC_SALE_CONTRACT_ADDRESS as `0x${string}`,
         abi: FXFSaleABI,
         functionName: 'buy',
         args: [
           tokenAddress,
-          paymentMethod === 'ETH' ? BigInt(0) : parsedAmount, // amount is 0 for ETH
-          false, // forRaffle
-          BigInt(0) // raffleId
+          paymentMethod === 'ETH' ? BigInt(0) : parsedAmount,
+          false,
+          BigInt(0)
         ],
-        value: paymentMethod === 'ETH' ? parsedAmount : BigInt(0) // ETH value
+        value: paymentMethod === 'ETH' ? parsedAmount : BigInt(0)
       })
 
     } catch (error) {
-      console.error('❌ Purchase error:', error)
+      console.error('Purchase error:', error)
+      toast.error('Transaction failed', { id: 'purchase-status' })
       setIsPurchaseLoading(false)
       setPurchaseTxHash(undefined)
     }

@@ -40,7 +40,7 @@ const calculateRemainingTime = (startTime: bigint) => {
   const minutes = Number((remaining % 3600n) / 60n)
   const seconds = Number(remaining % 60n)
 
-  return { days, hours, minutes, seconds, isComplete: true }
+  return { days, hours, minutes, seconds, isComplete: false }
 }
 
 function VestingCountdown({ startTime }: { startTime: bigint }) {
@@ -554,131 +554,276 @@ export default function UserVestingInfo() {
 
   if (!raffleVestingData?.length) {
     return (
-      <div className="vesting-info">
-        <h2 className="title">Your Vesting Information</h2>
-        <p className="no-data">No vesting schedules found</p>
+      <div className="vesting-info-container">
+        <div className="vesting-info">
+          <div className="title-row">
+            <h2 className="title">Your Vesting Information</h2>
+            <button className="refresh-button" onClick={handleManualRefresh}>
+              Refresh
+            </button>
+          </div>
+          
+          <div className="no-data-container">
+            <div className="no-data">
+              <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="9" y1="9" x2="15" y2="15"></line>
+                <line x1="15" y1="9" x2="9" y2="15"></line>
+              </svg>
+              <p>No vesting schedules found</p>
+            </div>
+          </div>
+        </div>
+
+        <style jsx>{`
+          .vesting-info-container {
+            margin: 60px 0;
+            padding: 30px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            border: 1px solid #E5E7EB;
+          }
+
+          .vesting-info {
+            width: 100%;
+          }
+
+          .title-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #E5E7EB;
+          }
+
+          .title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin: 0;
+            position: relative;
+          }
+
+          .title:after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 0;
+            width: 60px;
+            height: 3px;
+            background: #2563EB;
+            border-radius: 2px;
+          }
+
+          .no-data-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 200px;
+          }
+
+          .no-data {
+            text-align: center;
+            padding: 30px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            border: 1px dashed #d1d5db;
+            color: #6B7280;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            max-width: 400px;
+          }
+
+          .no-data svg {
+            color: #9ca3af;
+            margin-bottom: 16px;
+          }
+
+          .no-data p {
+            margin: 0;
+            font-size: 16px;
+          }
+
+          .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6B7280;
+            font-size: 16px;
+          }
+
+          .raffles-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 24px;
+            margin-top: 24px;
+          }
+
+          .raffle-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #E5E7EB;
+            transition: all 0.2s ease;
+          }
+
+          .raffle-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+          }
+
+          .refresh-button {
+            background: #f8f9fa;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 8px 16px;
+            font-size: 14px;
+            color: #1a1a1a;
+            cursor: pointer;
+            transition: all 0.2s;
+          }
+
+          .refresh-button:hover {
+            background: #e2e8f0;
+          }
+
+          @media (max-width: 768px) {
+            .vesting-info-container {
+              margin: 40px 0;
+              padding: 20px;
+            }
+          }
+        `}</style>
       </div>
     )
   }
 
   return (
-    <div className="vesting-info">
-      <Toaster 
-        position="top-right"
-        toastOptions={{
-          duration: 4000,
-          style: {
-            background: '#333',
-            color: '#fff',
-          },
-          success: {
-            duration: 3000,
-            style: {
-              background: '#10B981',
-            },
-          },
-          error: {
-            duration: 4000,
-            style: {
-              background: '#EF4444',
-            },
-          },
-        }}
-      />
-      <div className="title-row">
-        <h2 className="title">Your Vesting Information</h2>
-        <div className="button-group">
-          <ReleaseAllButton />
-          <button onClick={handleManualRefresh} className="refresh-button">
+    <div className="vesting-info-container">
+      <div className="vesting-info">
+        <div className="title-row">
+          <h2 className="title">Your Vesting Information</h2>
+          <button className="refresh-button" onClick={handleManualRefresh}>
             Refresh
           </button>
         </div>
-      </div>
-      
-      <div className="raffles-grid">
-        {raffleVestingData.map((raffle) => (
-          <div key={raffle.raffleId.toString()} className="raffle-card">
-            <h3>Raffle #{raffle.raffleId.toString()}</h3>
-            
-            <div className="purchases-grid">
-              {raffle.purchases.map((purchase, index) => (
-                <div key={index} className="purchase-card">
-                  <h4>Purchase #{index + 1}</h4>
-                  <div className="purchase-info">
-                    <div className="info-row">
-                      <span>Total Amount:</span>
-                      <span>{formatFxfAmount(purchase.amount)}</span>
-                    </div>
-                    <div className="info-row">
-                      <span>Released:</span>
-                      <span>{formatFxfAmount(purchase.releasedAmount)}</span>
-                    </div>
-                    <div className="info-row">
-                      <span>Vested Amount:</span>
-                      <span>{formatFxfAmount(BigInt(purchase.amount))}</span>
-                    </div>
-                    <div className="info-row">
-                      <span>Amount to be Released:</span>
-                      <span>{formatFxfAmount(BigInt(purchase.vestedAmount) - BigInt(purchase.releasedAmount))}</span>
-                    </div>
-                    <div className="info-row">
-                      <span>Start Date:</span>
-                      <span>{formatDate(BigInt(purchase.startTime))}</span>
-                    </div>
-                    <div className="info-row">
-                      <span>Vesting Period:</span>
-                      <span>180 days</span>
-                    </div>
-                    <div className="info-row countdown-row">
-                      <span>Time Remaining:</span>
-                      <VestingCountdown startTime={BigInt(purchase.startTime)} />
-                    </div>
+        
+        <div className="raffles-grid">
+          {raffleVestingData.map((raffle) => (
+            <div key={raffle.raffleId.toString()} className="raffle-card">
+              <h3>Raffle #{raffle.raffleId.toString()}</h3>
+              
+              <div className="purchases-grid">
+                {raffle.purchases.map((purchase, index) => (
+                  <div key={index} className="purchase-card">
+                    <h4>Purchase #{index + 1}</h4>
+                    <div className="purchase-info">
+                      <div className="info-row">
+                        <span>Total Amount:</span>
+                        <span>{formatFxfAmount(purchase.amount)}</span>
+                      </div>
+                      <div className="info-row">
+                        <span>Released:</span>
+                        <span>{formatFxfAmount(purchase.releasedAmount)}</span>
+                      </div>
+                      <div className="info-row">
+                        <span>Vested Amount:</span>
+                        <span>{formatFxfAmount(BigInt(purchase.amount))}</span>
+                      </div>
+                      <div className="info-row">
+                        <span>Amount to be Released:</span>
+                        <span>{formatFxfAmount(BigInt(purchase.vestedAmount) - BigInt(purchase.releasedAmount))}</span>
+                      </div>
+                      <div className="info-row">
+                        <span>Start Date:</span>
+                        <span>{formatDate(BigInt(purchase.startTime))}</span>
+                      </div>
+                      <div className="info-row">
+                        <span>Vesting Period:</span>
+                        <span>180 days</span>
+                      </div>
+                      <div className="info-row countdown-row">
+                        <span>Time Remaining:</span>
+                        <VestingCountdown startTime={BigInt(purchase.startTime)} />
+                      </div>
 
-                    <div className="release-row">
-                      <ReleaseButton 
-                        raffleId={raffle.raffleId} 
-                        isComplete={calculateRemainingTime(BigInt(purchase.startTime)).isComplete}
-                      />
+                      <div className="release-row">
+                        <ReleaseButton 
+                          raffleId={raffle.raffleId} 
+                          isComplete={calculateRemainingTime(BigInt(purchase.startTime)).isComplete}
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
       <style jsx>{`
+        .vesting-info-container {
+          margin: 60px 0;
+          padding: 30px;
+          background: white;
+          border-radius: 20px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+          border: 1px solid #E5E7EB;
+        }
+
         .vesting-info {
           width: 100%;
-          margin-top: 40px;
+        }
+
+        .title-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 24px;
+          padding-bottom: 16px;
+          border-bottom: 1px solid #E5E7EB;
         }
 
         .title {
           font-size: 24px;
           font-weight: 600;
-          margin-bottom: 24px;
           color: #1a1a1a;
+          margin: 0;
+          position: relative;
         }
 
-        .no-data {
-          text-align: center;
-          color: #666;
-          padding: 24px;
-          background: #f8f9fa;
-          border-radius: 12px;
+        .title:after {
+          content: '';
+          position: absolute;
+          bottom: -8px;
+          left: 0;
+          width: 60px;
+          height: 3px;
+          background: #2563EB;
+          border-radius: 2px;
         }
 
         .raffles-grid {
           display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
           gap: 24px;
+          margin-top: 24px;
         }
 
         .raffle-card {
-          background: #fff;
+          background: #f8f9fa;
           border-radius: 12px;
-          padding: 24px;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+          padding: 20px;
+          border: 1px solid #E5E7EB;
+          transition: all 0.2s ease;
+        }
+
+        .raffle-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
         }
 
         .raffle-card h3 {
@@ -753,31 +898,10 @@ export default function UserVestingInfo() {
         }
 
         @media (max-width: 768px) {
-          .purchases-grid {
-            grid-template-columns: 1fr;
+          .vesting-info-container {
+            margin: 40px 0;
+            padding: 20px;
           }
-        }
-
-        .title-row {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 24px;
-        }
-
-        .refresh-button {
-          background: #f8f9fa;
-          border: 1px solid #e2e8f0;
-          border-radius: 6px;
-          padding: 8px 16px;
-          font-size: 14px;
-          color: #1a1a1a;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .refresh-button:hover {
-          background: #e2e8f0;
         }
 
         .release-row {
@@ -812,10 +936,19 @@ export default function UserVestingInfo() {
           opacity: 0.7;
         }
 
-        .button-group {
-          display: flex;
-          gap: 12px;
-          align-items: center;
+        .refresh-button {
+          background: #f8f9fa;
+          border: 1px solid #e2e8f0;
+          border-radius: 6px;
+          padding: 8px 16px;
+          font-size: 14px;
+          color: #1a1a1a;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .refresh-button:hover {
+          background: #e2e8f0;
         }
       `}</style>
     </div>
