@@ -1,5 +1,5 @@
 'use client'
-
+import { useClientMounted } from '@/hooks/useClientMount'
 import { useState, useEffect } from 'react'
 import { formatUnits, parseUnits } from 'viem'
 import { useAccount, useBalance, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
@@ -14,6 +14,7 @@ const ETH_ADDRESS = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE'
 type PaymentMethod = 'ETH' | 'USDT' | 'USDC'
 
 export default function BuyToken() {
+  const mounted = useClientMounted()
   const [inputAmount, setInputAmount] = useState<string>('')
   const [inputType, setInputType] = useState<'FXF' | 'PAYMENT'>('FXF')
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('ETH')
@@ -171,6 +172,8 @@ export default function BuyToken() {
   // Add this check for wallet connection
   const isWalletConnected = !!address
 
+ 
+
   // Update the handleSubmit function
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -229,6 +232,8 @@ export default function BuyToken() {
       setErrorMessage(null)
     }
   }, [inputAmount, inputType, paymentMethod, paymentAmount])
+
+  if (!mounted) return null
 
   // Update the formatLargeNumber function
   const formatLargeNumber = (value: string | number) => {

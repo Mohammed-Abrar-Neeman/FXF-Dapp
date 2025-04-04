@@ -4,7 +4,7 @@ import TokenInfo from './TokenInfo'
 import SaleInfo from './SaleInfo'
 import BuyToken from './BuyToken'
 
-export default function TabInterface() {
+export default function Dashboard() {
   return (
     <div className="main-container">
       <div className="content-section">

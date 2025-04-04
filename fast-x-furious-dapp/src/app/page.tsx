@@ -1,14 +1,12 @@
 // import { cookieStorage, createStorage, http } from '@wagmi/core'
 import { ConnectButton } from "@/components/ConnectButton";
-import { ActionButtonList } from "@/components/ActionButtonList";
-import TabInterface from "@/components/TabInterface";
+import Dashboard from "@/components/Dashboard";
 
 export default function Home() {
   return (
     <div className={"pages"}>
       <ConnectButton />
-      {/* <ActionButtonList /> */}
-      <TabInterface />
+      <Dashboard />
     </div>
   );
 }
