@@ -3,533 +3,554 @@
 import { useSaleContractRead, useSaleContractWrite } from '@/hooks/useSaleContract'
 import { useClientMounted } from "@/hooks/useClientMount"
 import { formatUnits } from 'viem'
-import { useAccount, useReadContracts } from 'wagmi'
+import { useAccount } from 'wagmi'
 import { useMemo, useState, useEffect, useCallback } from 'react'
-import FXFSaleABI from '../abi/FXFSale.json'
-import { useWaitForTransactionReceipt } from 'wagmi'
-import { useWriteContract } from 'wagmi'
-import { Toaster, toast } from 'react-hot-toast'
+// import FXFSaleABI from '../abi/FXFSale.json'
+// import { useWaitForTransactionReceipt, useWriteContract } from 'wagmi'
+// import { toast } from 'react-hot-toast'
 
-const SALE_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_SALE_CONTRACT_ADDRESS || ''
+//const SALE_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_SALE_CONTRACT_ADDRESS || ''
 
-// Add vesting duration constant (180 days in seconds)
-const VESTING_DURATION = 180n * 24n * 60n * 60n // 180 days in seconds
 
-interface VestingPurchase {
-  amount: bigint
-  releasedAmount: bigint
-  startTime: bigint
-  vestedAmount: bigint
-}
+// const decodeContractError = (error: any): string => {
+//   try {
+//     console.log('🔍 Raw error:', error)
 
-interface RaffleVesting {
-  raffleId: bigint
-  purchases: VestingPurchase[]
-}
-
-// Add a helper function to calculate remaining time
-const calculateRemainingTime = (startTime: bigint) => {
-  const now = BigInt(Math.floor(Date.now() / 1000))
-  const endTime = startTime + VESTING_DURATION
-  const remaining = endTime - now
-
-  if (remaining <= 0n) return { days: 0, hours: 0, minutes: 0, seconds: 0, isComplete: true }
-
-  const days = Number(remaining / 86400n)
-  const hours = Number((remaining % 86400n) / 3600n)
-  const minutes = Number((remaining % 3600n) / 60n)
-  const seconds = Number(remaining % 60n)
-
-  return { days, hours, minutes, seconds, isComplete: false }
-}
-
-function VestingCountdown({ startTime }: { startTime: bigint }) {
-  const [remaining, setRemaining] = useState(calculateRemainingTime(startTime))
-
-  useEffect(() => {
-    // Initial calculation
-    setRemaining(calculateRemainingTime(startTime))
-
-    // Update every second
-    const timer = setInterval(() => {
-      const newRemaining = calculateRemainingTime(startTime)
-      setRemaining(newRemaining)
-
-      // Clear interval if vesting is complete
-      if (newRemaining.isComplete) {
-        clearInterval(timer)
-      }
-    }, 1000) // Update every second instead of minute
-
-    // Cleanup on unmount
-    return () => clearInterval(timer)
-  }, [startTime])
-
-  if (remaining.isComplete) {
-    return <span className="completed">Vesting Complete</span>
-  }
-
-  // Format numbers to always show two digits
-  const format = (num: number) => num.toString().padStart(2, '0')
-
-  return (
-    <span className="countdown">
-      {remaining.days}d {format(remaining.hours)}:{format(remaining.minutes)}:{format(remaining.seconds)}
-    </span>
-  )
-}
-
-const decodeContractError = (error: any): string => {
-  try {
-    console.log('🔍 Raw error:', error)
-
-    // Helper to clean error message
-    const cleanErrorMessage = (msg: string): string => {
-      // Remove common prefixes
-      const prefixes = [
-        'execution reverted:',
-        'reverted:',
-        'FxF:',
-        'Error:'
-      ]
+//     // Helper to clean error message
+//     const cleanErrorMessage = (msg: string): string => {
+//       // Remove common prefixes
+//       const prefixes = [
+//         'execution reverted:',
+//         'reverted:',
+//         'FxF:',
+//         'Error:'
+//       ]
       
-      let cleaned = msg.trim()
-      for (const prefix of prefixes) {
-        if (cleaned.includes(prefix)) {
-          cleaned = cleaned.split(prefix).pop()?.trim() || cleaned
-        }
-      }
-      return cleaned
-    }
+//       let cleaned = msg.trim()
+//       for (const prefix of prefixes) {
+//         if (cleaned.includes(prefix)) {
+//           cleaned = cleaned.split(prefix).pop()?.trim() || cleaned
+//         }
+//       }
+//       return cleaned
+//     }
 
-    // Try to get error from different possible locations
-    let errorMessage: string | undefined
+//     // Try to get error from different possible locations
+//     let errorMessage: string | undefined
 
-    // Check viem error format first
-    if (error?.shortMessage) {
-      errorMessage = cleanErrorMessage(error.shortMessage)
-    }
-    // Check error data
-    else if (error?.data) {
-      errorMessage = cleanErrorMessage(error.data.toString())
-    }
-    // Check error message
-    else if (error?.message) {
-      errorMessage = cleanErrorMessage(error.message)
-    }
-    // Check nested error
-    else if (error?.error?.message) {
-      errorMessage = cleanErrorMessage(error.error.message)
-    }
+//     // Check viem error format first
+//     if (error?.shortMessage) {
+//       errorMessage = cleanErrorMessage(error.shortMessage)
+//     }
+//     // Check error data
+//     else if (error?.data) {
+//       errorMessage = cleanErrorMessage(error.data.toString())
+//     }
+//     // Check error message
+//     else if (error?.message) {
+//       errorMessage = cleanErrorMessage(error.message)
+//     }
+//     // Check nested error
+//     else if (error?.error?.message) {
+//       errorMessage = cleanErrorMessage(error.error.message)
+//     }
 
-    // Log the extracted message
-    console.log('📝 Extracted error:', {
-      original: error?.message || error?.shortMessage || error?.data,
-      cleaned: errorMessage,
-      timestamp: new Date().toISOString()
-    })
+//     // Log the extracted message
+//     console.log('📝 Extracted error:', {
+//       original: error?.message || error?.shortMessage || error?.data,
+//       cleaned: errorMessage,
+//       timestamp: new Date().toISOString()
+//     })
 
-    return errorMessage || 'Unknown error'
-  } catch (e) {
-    console.error('Error decoding contract error:', e)
-    return 'Unknown error'
-  }
-}
+//     return errorMessage || 'Unknown error'
+//   } catch (e) {
+//     console.error('Error decoding contract error:', e)
+//     return 'Unknown error'
+//   }
+// }
 
-function ReleaseButton({ raffleId, isComplete }: { raffleId: bigint, isComplete: boolean }) {
-  const [isReleasing, setIsReleasing] = useState(false)
-  const [txHash, setTxHash] = useState<`0x${string}` | undefined>()
-  const { address: userAddress } = useAccount()
+// function ReleaseButton({ raffleId, isComplete }: { raffleId: bigint, isComplete: boolean }) {
+//   const [isReleasing, setIsReleasing] = useState(false)
+//   const [txHash, setTxHash] = useState<`0x${string}` | undefined>()
+//   const { address: userAddress } = useAccount()
 
-  const { 
-    writeContract, 
-    isPending, 
-    error: writeError, 
-    isSuccess: isWriteSuccess, 
-    data: writeData 
-  } = useWriteContract({
-    mutation: {
-      onMutate: () => {
-        console.log('🚀 Starting release transaction:', {
-          raffleId: raffleId.toString(),
-          status: 'pending',
-          timestamp: new Date().toISOString()
-        })
-        toast.loading('Preparing transaction...', { id: 'release' })
-      },
-      onSuccess: (hash: `0x${string}`) => {
-        console.log('✅ Release transaction sent:', {
-          hash,
-          status: 'sent',
-          timestamp: new Date().toISOString()
-        })
-        setTxHash(hash)
-        toast.loading('Transaction sent, waiting for confirmation...', { id: 'release' })
-      },
-      onError: (err: any) => {
-        const errorMessage = decodeContractError(err)
-        console.error('❌ Contract error:', {
-          message: errorMessage,
-          raw: err,
-          timestamp: new Date().toISOString()
-        })
-        setIsReleasing(false)
-        setTxHash(undefined)
-        toast.error(errorMessage, { id: 'release' })
-      }
-    }
-  })
+//   const { 
+//     writeContract, 
+//     isPending, 
+//     error: writeError, 
+//     isSuccess: isWriteSuccess, 
+//     data: writeData 
+//   } = useWriteContract({
+//     mutation: {
+//       onMutate: () => {
+//         console.log('🚀 Starting release transaction:', {
+//           raffleId: raffleId.toString(),
+//           status: 'pending',
+//           timestamp: new Date().toISOString()
+//         })
+//         toast.loading('Preparing transaction...', { id: 'release' })
+//       },
+//       onSuccess: (hash: `0x${string}`) => {
+//         console.log('✅ Release transaction sent:', {
+//           hash,
+//           status: 'sent',
+//           timestamp: new Date().toISOString()
+//         })
+//         setTxHash(hash)
+//         toast.loading('Transaction sent, waiting for confirmation...', { id: 'release' })
+//       },
+//       onError: (err: any) => {
+//         const errorMessage = decodeContractError(err)
+//         console.error('❌ Contract error:', {
+//           message: errorMessage,
+//           raw: err,
+//           timestamp: new Date().toISOString()
+//         })
+//         setIsReleasing(false)
+//         setTxHash(undefined)
+//         toast.error(errorMessage, { id: 'release' })
+//       }
+//     }
+//   })
 
-  // Monitor transaction with detailed logging
-  const { 
-    isLoading: isConfirming, 
-    data: txData, 
-    isSuccess,
-    isError,
-    error: txError
-  } = useWaitForTransactionReceipt({
-    hash: txHash,
-    confirmations: 1,
-    onSuccess: (data) => {
-      console.log('✅ Transaction receipt:', {
-        hash: txHash,
-        status: data.status,
-        blockNumber: data.blockNumber,
-        from: data.from,
-        to: data.to,
-        logs: data.logs,
-        timestamp: new Date().toISOString()
-      })
-    }
-  })
+//   // Monitor transaction with detailed logging
+//   const { 
+//     isLoading: isConfirming, 
+//     data: txData, 
+//     isSuccess,
+//     isError,
+//     error: txError
+//   } = useWaitForTransactionReceipt({
+//     hash: txHash,
+//     confirmations: 1,
+//     query: {
+//       onSuccess: (data:any) => {
+//         console.log('✅ Transaction receipt:', {
+//           hash: txHash,
+//           status: data.status,
+//           blockNumber: data.blockNumber,
+//           from: data.from,
+//           to: data.to,
+//           logs: data.logs,
+//           timestamp: new Date().toISOString()
+//         })
+//       }
+//     }
+//   })
 
-  // Log state changes
-  useEffect(() => {
-    if (isConfirming) {
-      console.log('⏳ Transaction confirming:', {
-        hash: txHash,
-        timestamp: new Date().toISOString()
-      })
-      toast.loading('Confirming transaction...', { id: 'release' })
-    }
-  }, [isConfirming, txHash])
+//   // Log state changes
+//   useEffect(() => {
+//     if (isConfirming) {
+//       console.log('⏳ Transaction confirming:', {
+//         hash: txHash,
+//         timestamp: new Date().toISOString()
+//       })
+//       toast.loading('Confirming transaction...', { id: 'release' })
+//     }
+//   }, [isConfirming, txHash])
 
-  // Update transaction error handling
-  useEffect(() => {
-    if (isError && txError) {
-      const errorMessage = decodeContractError(txError)
-      // console.error('💥 Transaction error:', {
-      //   message: errorMessage,
-      //   hash: txHash,
-      //   raw: txError,
-      //   timestamp: new Date().toISOString()
-      // })
-      setIsReleasing(false)
-      setTxHash(undefined)
-      toast.error(errorMessage, { id: 'release' })
-    }
-  }, [isError, txError, txHash])
+//   // Update transaction error handling
+//   useEffect(() => {
+//     if (isError && txError) {
+//       const errorMessage = decodeContractError(txError)
+//       setIsReleasing(false)
+//       setTxHash(undefined)
+//       toast.error(errorMessage, { id: 'release' })
+//     }
+//   }, [isError, txError, txHash])
 
-  // Update success effect to use correct variables
-  useEffect(() => {
-    if (isWriteSuccess && writeData?.status === 1) {
-      // Wait for success toast to be visible then reload
-      setTimeout(() => {
-        window.location.reload()
-      }, 1500)
-    }
-  }, [isWriteSuccess, writeData])
+//   // Update success effect to use correct variables
+//   useEffect(() => {
+//     if (isWriteSuccess && writeData?.status === 1) {
+//       // Wait for success toast to be visible then reload
+//       setTimeout(() => {
+//         window.location.reload()
+//       }, 1500)
+//     }
+//   }, [isWriteSuccess, writeData])
 
-  const handleRelease = async () => {
-    try {
-      if (writeError) {
-        console.error('Previous write error:', writeError)
-      }
+//   const handleRelease = async () => {
+//     try {
+//       if (writeError) {
+//         console.error('Previous write error:', writeError)
+//       }
       
-      // Log contract call details
-      console.log('📝 Release tokens contract call:', {
-        contract: SALE_CONTRACT_ADDRESS,
-        function: 'releaseVestedTokens',
-        params: {
-          raffleId: raffleId.toString(),
-          caller: userAddress,
-        },
-        timestamp: new Date().toISOString()
-      })
+//       // Log contract call details
+//       console.log('📝 Release tokens contract call:', {
+//         contract: SALE_CONTRACT_ADDRESS,
+//         function: 'releaseVestedTokens',
+//         params: {
+//           raffleId: raffleId.toString(),
+//           caller: userAddress,
+//         },
+//         timestamp: new Date().toISOString()
+//       })
       
-      setIsReleasing(true)
+//       setIsReleasing(true)
       
-      await writeContract({
-        address: SALE_CONTRACT_ADDRESS as `0x${string}`,
-        abi: FXFSaleABI,
-        functionName: 'releaseVestedTokens',
-        args: [raffleId]
-      })
-    } catch (error) {
-      console.error('Release call error:', {
-        error,
-        contract: SALE_CONTRACT_ADDRESS,
-        function: 'releaseVestedTokens',
-        params: {
-          raffleId: raffleId.toString(),
-          caller: userAddress,
-        },
-        timestamp: new Date().toISOString()
-      })
-      setIsReleasing(false)
-      setTxHash(undefined)
-      toast.error(`Failed to release: ${decodeContractError(error)}`, { id: 'release' })
-    }
-  }
+//       await writeContract({
+//         address: SALE_CONTRACT_ADDRESS as `0x${string}`,
+//         abi: FXFSaleABI,
+//         functionName: 'releaseVestedTokens',
+//         args: [raffleId]
+//       })
+//     } catch (error) {
+//       console.error('Release call error:', {
+//         error,
+//         contract: SALE_CONTRACT_ADDRESS,
+//         function: 'releaseVestedTokens',
+//         params: {
+//           raffleId: raffleId.toString(),
+//           caller: userAddress,
+//         },
+//         timestamp: new Date().toISOString()
+//       })
+//       setIsReleasing(false)
+//       setTxHash(undefined)
+//       toast.error(`Failed to release: ${decodeContractError(error)}`, { id: 'release' })
+//     }
+//   }
 
-  const getButtonText = () => {
-    if (isPending) return 'Confirm in Wallet...'
-    if (isConfirming) return 'Confirming...'
-    if (isReleasing) return 'Releasing...'
-    return 'Release Tokens'
-  }
+//   const getButtonText = () => {
+//     if (isPending) return 'Confirm in Wallet...'
+//     if (isConfirming) return 'Confirming...'
+//     if (isReleasing) return 'Releasing...'
+//     return 'Release Tokens'
+//   }
 
-  if (!isComplete) return null
+//   if (!isComplete) return null
 
-  return (
-    <button 
-      onClick={handleRelease}
-      disabled={isReleasing || isConfirming || isPending}
-      className="release-button"
-    >
-      {getButtonText()}
-      <style jsx>{`
-        .release-button {
-          background: #2563eb;
-          color: white;
-          border: none;
-          border-radius: 6px;
-          padding: 8px 16px;
-          font-size: 14px;
-          font-weight: 500;
-          cursor: pointer;
-          transition: all 0.2s;
-          width: 100%;
-          max-width: 200px;
-        }
+//   return (
+//     <button 
+//       onClick={handleRelease}
+//       disabled={isReleasing || isConfirming || isPending}
+//       className="release-button"
+//     >
+//       {getButtonText()}
+//       <style jsx>{`
+//         .release-button {
+//           background: #2563eb;
+//           color: white;
+//           border: none;
+//           border-radius: 6px;
+//           padding: 8px 16px;
+//           font-size: 14px;
+//           font-weight: 500;
+//           cursor: pointer;
+//           transition: all 0.2s;
+//           width: 100%;
+//           max-width: 200px;
+//         }
 
-        .release-button:hover:not(:disabled) {
-          background: #1d4ed8;
-        }
+//         .release-button:hover:not(:disabled) {
+//           background: #1d4ed8;
+//         }
 
-        .release-button:disabled {
-          background: #94a3b8;
-          cursor: not-allowed;
-          opacity: 0.7;
-        }
-      `}</style>
-    </button>
-  )
-}
+//         .release-button:disabled {
+//           background: #94a3b8;
+//           cursor: not-allowed;
+//           opacity: 0.7;
+//         }
+//       `}</style>
+//     </button>
+//   )
+// }
 
-function ReleaseAllButton() {
-  const [isReleasing, setIsReleasing] = useState(false)
-  const [txHash, setTxHash] = useState<`0x${string}` | undefined>()
-  const { address: userAddress } = useAccount()
+// function ReleaseAllButton() {
+//   const [isReleasing, setIsReleasing] = useState(false)
+//   const [txHash, setTxHash] = useState<`0x${string}` | undefined>()
+//   const { address: userAddress } = useAccount()
 
-  const { 
-    writeContract, 
-    isPending, 
-    error: writeError, 
-    isSuccess: isWriteSuccess, 
-    data: writeData 
-  } = useWriteContract({
-    mutation: {
-      onMutate: () => {
-        console.log('🚀 Starting release all transaction')
-        toast.loading('Preparing transaction...', { id: 'release-all' })
-      },
-      onSuccess: (hash: `0x${string}`) => {
-        console.log('✅ Release all transaction sent:', { hash })
-        setTxHash(hash)
-        toast.loading('Transaction sent, waiting for confirmation...', { id: 'release-all' })
-      },
-      onError: (err: any) => {
-        const errorMessage = decodeContractError(err)
-        console.error('❌ Release all failed:', { error: errorMessage })
-        setIsReleasing(false)
-        setTxHash(undefined)
-        toast.error(errorMessage, { id: 'release-all' })
-      }
-    }
-  })
+//   const { 
+//     writeContract, 
+//     isPending, 
+//     error: writeError, 
+//     isSuccess: isWriteSuccess, 
+//     data: writeData 
+//   } = useWriteContract({
+//     mutation: {
+//       onMutate: () => {
+//         console.log('🚀 Starting release all transaction')
+//         toast.loading('Preparing transaction...', { id: 'release-all' })
+//       },
+//       onSuccess: (hash: `0x${string}`) => {
+//         console.log('✅ Release all transaction sent:', { hash })
+//         setTxHash(hash)
+//         toast.loading('Transaction sent, waiting for confirmation...', { id: 'release-all' })
+//       },
+//       onError: (err: any) => {
+//         const errorMessage = decodeContractError(err)
+//         console.error('❌ Release all failed:', { error: errorMessage })
+//         setIsReleasing(false)
+//         setTxHash(undefined)
+//         toast.error(errorMessage, { id: 'release-all' })
+//       }
+//     }
+//   })
 
-  const { isLoading: isConfirming, isError, error: txError } = useWaitForTransactionReceipt({
-    hash: txHash,
-    confirmations: 1,
-    onSuccess: () => {
-      toast.success('All tokens released successfully!', { id: 'release-all' })
-      setTimeout(() => window.location.reload(), 2000)
-    }
-  })
+//   const { isLoading: isConfirming, isError, error: txError } = useWaitForTransactionReceipt({
+//     hash: txHash,
+//     confirmations: 1,
+//     query: {
+//       onSuccess: () => {
+//         toast.success('All tokens released successfully!', { id: 'release-all' })
+//         setTimeout(() => window.location.reload(), 2000)
+//       }
+//     }
+//   })
 
-  useEffect(() => {
-    if (isError && txError) {
-      const errorMessage = decodeContractError(txError)
-      setIsReleasing(false)
-      setTxHash(undefined)
-      toast.error(errorMessage, { id: 'release-all' })
-    }
-  }, [isError, txError])
+//   useEffect(() => {
+//     if (isError && txError) {
+//       const errorMessage = decodeContractError(txError)
+//       setIsReleasing(false)
+//       setTxHash(undefined)
+//       toast.error(errorMessage, { id: 'release-all' })
+//     }
+//   }, [isError, txError])
 
-  // Update success effect to use correct variables
-  useEffect(() => {
-    if (isWriteSuccess && writeData?.status === 1) {
-      setTimeout(() => {
-        window.location.reload()
-      }, 1500)
-    }
-  }, [isWriteSuccess, writeData])
+//   // Update success effect to use correct variables
+//   useEffect(() => {
+//     if (isWriteSuccess && writeData?.status === 1) {
+//       setTimeout(() => {
+//         window.location.reload()
+//       }, 1500)
+//     }
+//   }, [isWriteSuccess, writeData])
 
-  const handleReleaseAll = async () => {
-    try {
-      setIsReleasing(true)
-      await writeContract({
-        address: SALE_CONTRACT_ADDRESS as `0x${string}`,
-        abi: FXFSaleABI,
-        functionName: 'releaseAllVestedTokens',
-        args: []
-      })
-    } catch (error) {
-      console.error('Release all error:', error)
-      setIsReleasing(false)
-      setTxHash(undefined)
-      toast.error(decodeContractError(error), { id: 'release-all' })
-    }
-  }
+//   const handleReleaseAll = async () => {
+//     try {
+//       setIsReleasing(true)
+//       await writeContract({
+//         address: SALE_CONTRACT_ADDRESS as `0x${string}`,
+//         abi: FXFSaleABI,
+//         functionName: 'releaseAllVestedTokens',
+//         args: []
+//       })
+//     } catch (error) {
+//       console.error('Release all error:', error)
+//       setIsReleasing(false)
+//       setTxHash(undefined)
+//       toast.error(decodeContractError(error), { id: 'release-all' })
+//     }
+//   }
 
-  const getButtonText = () => {
-    if (isPending) return 'Confirm in Wallet...'
-    if (isConfirming) return 'Confirming...'
-    if (isReleasing) return 'Releasing...'
-    return 'Release All'
-  }
+//   const getButtonText = () => {
+//     if (isPending) return 'Confirm in Wallet...'
+//     if (isConfirming) return 'Confirming...'
+//     if (isReleasing) return 'Releasing...'
+//     return 'Release All'
+//   }
 
-  return (
-    <button 
-      onClick={handleReleaseAll}
-      disabled={isReleasing || isConfirming || isPending}
-      className="release-all-button"
-    >
-      {getButtonText()}
-      <style jsx>{`
-        .release-all-button {
-          background: #2563eb;
-          color: white;
-          border: none;
-          border-radius: 6px;
-          padding: 8px 16px;
-          font-size: 14px;
-          font-weight: 500;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
+//   return (
+//     <button 
+//       onClick={handleReleaseAll}
+//       disabled={isReleasing || isConfirming || isPending}
+//       className="release-all-button"
+//     >
+//       {getButtonText()}
+//       <style jsx>{`
+//         .release-all-button {
+//           background: #2563eb;
+//           color: white;
+//           border: none;
+//           border-radius: 6px;
+//           padding: 8px 16px;
+//           font-size: 14px;
+//           font-weight: 500;
+//           cursor: pointer;
+//           transition: all 0.2s;
+//         }
 
-        .release-all-button:hover:not(:disabled) {
-          background: #1d4ed8;
-        }
+//         .release-all-button:hover:not(:disabled) {
+//           background: #1d4ed8;
+//         }
 
-        .release-all-button:disabled {
-          background: #94a3b8;
-          cursor: not-allowed;
-          opacity: 0.7;
-        }
-      `}</style>
-    </button>
-  )
+//         .release-all-button:disabled {
+//           background: #94a3b8;
+//           cursor: not-allowed;
+//           opacity: 0.7;
+//         }
+//       `}</style>
+//     </button>
+//   )
+// }
+
+// Add proper types for contract data
+interface VestingData {
+  amounts: bigint[]
+  releasedAmounts: bigint[]
+  startTimes: bigint[]
+  vestedAmounts: bigint[]
 }
 
 export default function UserVestingInfo() {
   const mounted = useClientMounted()
   const { address: userAddress } = useAccount()
 
-  // Add refresh interval state (default 1 day in milliseconds)
-  const REFRESH_INTERVAL = 24 * 60 * 60 * 1000 // 24 hours
-
-  // Get user's raffle IDs
-  const { data: userRaffles } = useSaleContractRead('getUserRaffles', [userAddress || '0x0'])
-
-  // Create contract calls for vesting info
-  const vestingCalls = useMemo(() => {
-    if (!userRaffles?.length) return []
-    
-    return userRaffles.map((raffleId: bigint) => ({
-      address: SALE_CONTRACT_ADDRESS as `0x${string}`,
-      abi: FXFSaleABI,
-      functionName: 'getVestingPurchases',
-      args: [userAddress || '0x0', raffleId]
-    }))
-  }, [userRaffles, userAddress])
-
-  // Update your batch fetch to include refetch
-  const { data: vestingResults, refetch } = useReadContracts({
-    contracts: vestingCalls,
-    query: {
-      // Enable auto background refresh every hour
-      refetchInterval: 60 * 60 * 1000
+  // Get VESTING_DURATION with proper type handling
+  const { data: vestingDuration } = useSaleContractRead(
+    'VESTING_DURATION',
+    [],
+    {
+      select: (data: unknown): bigint => {
+        if (typeof data === 'string' || typeof data === 'number') {
+          return BigInt(data)
+        }
+        return BigInt(0)
+      }
     }
-  })
+  )
 
-  // Create a refresh function after contract setup
-  const refreshVestingData = useCallback(() => {
-    console.log('🔄 Refreshing vesting data...')
-    if (vestingResults?.length) {
-      vestingResults.forEach((result: any, index: number) => {
-        console.log(`Refreshing data for raffle ${index + 1}`)
-      })
+  // Define calculateRemainingTime first
+  const calculateRemainingTime = useCallback((startTime: bigint) => {
+    const now = BigInt(Math.floor(Date.now() / 1000))
+    const duration = typeof vestingDuration === 'bigint' ? vestingDuration : BigInt(0)
+    const endTime = startTime + duration
+    const remaining = endTime - now
+
+    if (remaining <= BigInt(0)) return { 
+      days: 0, 
+      hours: 0, 
+      minutes: 0, 
+      seconds: 0, 
+      isComplete: true 
     }
-    // Trigger a refetch of the contract data
-    refetch?.()
-  }, [vestingResults, refetch])
 
-  // Add auto-refresh effect
-  useEffect(() => {
-    // Initial refresh
-    refreshVestingData()
+    const days = Number(remaining / BigInt(86400))
+    const hours = Number((remaining % BigInt(86400)) / BigInt(3600))
+    const minutes = Number((remaining % BigInt(3600)) / BigInt(60))
+    const seconds = Number(remaining % BigInt(60))
 
-    // Set up interval for periodic refresh
-    const intervalId = setInterval(refreshVestingData, REFRESH_INTERVAL)
+    return { days, hours, minutes, seconds, isComplete: false }
+  }, [vestingDuration])
 
-    // Cleanup on unmount
-    return () => clearInterval(intervalId)
-  }, [refreshVestingData, REFRESH_INTERVAL])
+  // Then define VestingCountdown
+  const VestingCountdown = useCallback(({ startTime }: { startTime: bigint }) => {
+    const [remaining, setRemaining] = useState(() => calculateRemainingTime(startTime))
 
-  // Add manual refresh function
-  const handleManualRefresh = () => {
-    console.log('🔄 Manual refresh triggered')
-    refreshVestingData()
+    useEffect(() => {
+      setRemaining(calculateRemainingTime(startTime))
+
+      const timer = setInterval(() => {
+        const newRemaining = calculateRemainingTime(startTime)
+        setRemaining(newRemaining)
+
+        if (newRemaining.isComplete) {
+          clearInterval(timer)
+        }
+      }, 1000)
+
+      return () => clearInterval(timer)
+    }, [startTime])
+
+    if (remaining.isComplete) {
+      return <span className="completed">Vesting Complete</span>
+    }
+
+    const format = (num: number) => num.toString().padStart(2, '0')
+
+    return (
+      <span className="countdown">
+        {remaining.days}d {format(remaining.hours)}:{format(remaining.minutes)}:{format(remaining.seconds)}
+      </span>
+    )
+  }, [calculateRemainingTime])
+
+  // Add type assertion for userRaffles
+  const { data: userRaffles = [] } = useSaleContractRead(
+    'getUserRaffles',
+    userAddress ? [userAddress] : [],
+    {
+      enabled: !!userAddress,
+      select: (data: unknown): bigint[] => {
+        if (!Array.isArray(data)) return []
+        return data.filter((id): id is bigint => typeof id === 'bigint')
+      }
+    }
+  ) as { data: bigint[] }
+
+  // Get vesting info with proper type assertion
+  const defaultVestingData: VestingData = {
+    amounts: [],
+    releasedAmounts: [],
+    startTimes: [],
+    vestedAmounts: []
   }
 
-  // Process results
-  const raffleVestingData = useMemo(() => {
-    if (!userRaffles?.length || !vestingResults?.length) return []
-
-    return userRaffles.map((raffleId: bigint, index) => {
-      const vestingInfo = vestingResults[index]?.result
-      if (!vestingInfo) return null
-
-      const [amounts, releasedAmounts, startTimes, vestedAmounts] = vestingInfo
-      
-      const purchases = amounts.map((_, purchaseIndex) => ({
-        amount: amounts[purchaseIndex],
-        releasedAmount: releasedAmounts[purchaseIndex],
-        startTime: startTimes[purchaseIndex],
-        vestedAmount: vestedAmounts[purchaseIndex]
-      }))
-
-      return {
-        raffleId,
-        purchases
+  const { 
+    data: vestingInfo = defaultVestingData,
+    isLoading: isLoadingVesting,
+    error: vestingError,
+    isError 
+  } = useSaleContractRead(
+    'getVestingPurchases',
+    userAddress && userRaffles.length ? [userAddress, userRaffles[0]] : [],
+    {
+      enabled: !!userAddress && userRaffles.length > 0,
+      select: (data: unknown): VestingData => {
+        if (!Array.isArray(data)) return defaultVestingData
+        const [amounts, releasedAmounts, startTimes, vestedAmounts] = data as [bigint[], bigint[], bigint[], bigint[]]
+        return { amounts, releasedAmounts, startTimes, vestedAmounts }
       }
-    }).filter(Boolean)
-  }, [userRaffles, vestingResults])
+    }
+  )
+
+  // Debug logs
+  useEffect(() => {
+    console.log('Debug Data:', {
+      userAddress,
+      vestingDuration: vestingDuration?.toString(),
+      userRaffles: userRaffles?.map(id => id.toString()),
+      vestingInfo,
+      isError,
+      vestingError: vestingError?.message
+    })
+  }, [userAddress, vestingDuration, userRaffles, vestingInfo, isError, vestingError])
+
+  // Show error state if there's an error
+  if (isError) {
+    return <div>Error loading vesting information. Please try again later.</div>
+  }
+
+  // Process vesting data
+  const raffleVestingData = useMemo(() => {
+    if (!vestingInfo || !userRaffles?.length) return []
+
+    return userRaffles
+      .map((raffleId: bigint) => {
+        const data = vestingInfo as VestingData
+        const { amounts, releasedAmounts, startTimes, vestedAmounts } = data
+
+        if (!amounts?.length) return null
+
+        const validPurchases = amounts
+          .map((amount: bigint, index: number) => ({
+            amount,
+            releasedAmount: releasedAmounts[index] || BigInt(0),
+            startTime: startTimes[index] || BigInt(0),
+            vestedAmount: vestedAmounts[index] || BigInt(0)
+          }))
+          .filter((p): p is { amount: bigint; releasedAmount: bigint; startTime: bigint; vestedAmount: bigint } => 
+            p.amount > BigInt(0))
+
+        if (!validPurchases.length) return null
+
+        return { raffleId, purchases: validPurchases }
+      })
+      .filter((raffle): raffle is NonNullable<typeof raffle> => raffle !== null)
+  }, [vestingInfo, userRaffles])
 
   if (!mounted || !userAddress) return null
+
+  // Show loading state only if actively loading
+  if (isLoadingVesting) {
+    return <div>Loading vesting information...</div>
+  }
+
+  // Show no data message if we have loaded but found no data
+  if (!raffleVestingData.length) {
+    return <div>No vesting schedules found. Please check back later.</div>
+  }
 
   const formatFxfAmount = (amount: bigint) => {
     try {
@@ -552,162 +573,11 @@ export default function UserVestingInfo() {
     }
   }
 
-  if (!raffleVestingData?.length) {
-    return (
-      <div className="vesting-info-container">
-        <div className="vesting-info">
-          <div className="title-row">
-            <h2 className="title">Your Vesting Information</h2>
-            <button className="refresh-button" onClick={handleManualRefresh}>
-              Refresh
-            </button>
-          </div>
-          
-          <div className="no-data-container">
-            <div className="no-data">
-              <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                <line x1="9" y1="9" x2="15" y2="15"></line>
-                <line x1="15" y1="9" x2="9" y2="15"></line>
-              </svg>
-              <p>No vesting schedules found</p>
-            </div>
-          </div>
-        </div>
-
-        <style jsx>{`
-          .vesting-info-container {
-            margin: 60px 0;
-            padding: 30px;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            border: 1px solid #E5E7EB;
-          }
-
-          .vesting-info {
-            width: 100%;
-          }
-
-          .title-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 24px;
-            padding-bottom: 16px;
-            border-bottom: 1px solid #E5E7EB;
-          }
-
-          .title {
-            font-size: 24px;
-            font-weight: 600;
-            color: #1a1a1a;
-            margin: 0;
-            position: relative;
-          }
-
-          .title:after {
-            content: '';
-            position: absolute;
-            bottom: -8px;
-            left: 0;
-            width: 60px;
-            height: 3px;
-            background: #2563EB;
-            border-radius: 2px;
-          }
-
-          .no-data-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 200px;
-          }
-
-          .no-data {
-            text-align: center;
-            padding: 30px;
-            background: #f8f9fa;
-            border-radius: 12px;
-            border: 1px dashed #d1d5db;
-            color: #6B7280;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            max-width: 400px;
-          }
-
-          .no-data svg {
-            color: #9ca3af;
-            margin-bottom: 16px;
-          }
-
-          .no-data p {
-            margin: 0;
-            font-size: 16px;
-          }
-
-          .loading {
-            text-align: center;
-            padding: 40px;
-            color: #6B7280;
-            font-size: 16px;
-          }
-
-          .raffles-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 24px;
-            margin-top: 24px;
-          }
-
-          .raffle-card {
-            background: #f8f9fa;
-            border-radius: 12px;
-            padding: 20px;
-            border: 1px solid #E5E7EB;
-            transition: all 0.2s ease;
-          }
-
-          .raffle-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
-          }
-
-          .refresh-button {
-            background: #f8f9fa;
-            border: 1px solid #e2e8f0;
-            border-radius: 6px;
-            padding: 8px 16px;
-            font-size: 14px;
-            color: #1a1a1a;
-            cursor: pointer;
-            transition: all 0.2s;
-          }
-
-          .refresh-button:hover {
-            background: #e2e8f0;
-          }
-
-          @media (max-width: 768px) {
-            .vesting-info-container {
-              margin: 40px 0;
-              padding: 20px;
-            }
-          }
-        `}</style>
-      </div>
-    )
-  }
-
   return (
     <div className="vesting-info-container">
       <div className="vesting-info">
         <div className="title-row">
           <h2 className="title">Your Vesting Information</h2>
-          <button className="refresh-button" onClick={handleManualRefresh}>
-            Refresh
-          </button>
         </div>
         
         <div className="raffles-grid">
@@ -749,12 +619,12 @@ export default function UserVestingInfo() {
                         <VestingCountdown startTime={BigInt(purchase.startTime)} />
                       </div>
 
-                      <div className="release-row">
+                      {/* <div className="release-row">
                         <ReleaseButton 
                           raffleId={raffle.raffleId} 
                           isComplete={calculateRemainingTime(BigInt(purchase.startTime)).isComplete}
                         />
-                      </div>
+                      </div> */}
                     </div>
                   </div>
                 ))}
@@ -934,21 +804,6 @@ export default function UserVestingInfo() {
           background: #94a3b8;
           cursor: not-allowed;
           opacity: 0.7;
-        }
-
-        .refresh-button {
-          background: #f8f9fa;
-          border: 1px solid #e2e8f0;
-          border-radius: 6px;
-          padding: 8px 16px;
-          font-size: 14px;
-          color: #1a1a1a;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .refresh-button:hover {
-          background: #e2e8f0;
         }
       `}</style>
     </div>

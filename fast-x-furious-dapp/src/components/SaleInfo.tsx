@@ -4,7 +4,6 @@ import { useSaleContractRead } from '@/hooks/useSaleContract'
 import { useClientMounted } from "@/hooks/useClientMount"
 import { formatUnits } from 'viem'
 import UserVestingInfo from './UserVestingInfo'
-import RaffleInfo from './RaffleInfo'
 
 export default function SaleInfo() {
   const mounted = useClientMounted()
@@ -241,7 +240,7 @@ export default function SaleInfo() {
       </div>
       
       <UserVestingInfo />
-      <RaffleInfo />
+      {/* <RaffleInfo /> */}
     </>
   )
 } 
