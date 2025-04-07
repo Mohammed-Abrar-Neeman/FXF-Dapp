@@ -2,7 +2,7 @@
 
 import TokenInfo from './TokenInfo'
 import SaleInfo from './SaleInfo'
-import { TokenApproval } from './TokenApproval'
+import { BuyToken } from './BuyToken'
 import styles from './Dashboard.module.css'
 
 export default function Dashboard() {
@@ -12,7 +12,7 @@ export default function Dashboard() {
         <TokenInfo />
         {/* <BuyToken /> */}
         <SaleInfo />
-        <TokenApproval />
+        <BuyToken />
       </div>
     </div>
   )

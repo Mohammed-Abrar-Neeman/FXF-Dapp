@@ -4,7 +4,7 @@ import { useSaleContractRead, useSaleContractWrite } from '../hooks/useSaleContr
 import { toast } from 'react-hot-toast'
 import { formatUnits, parseUnits } from 'viem'
 import { useAccount, useBalance } from 'wagmi'
-import styles from './TokenApproval.module.css'
+import styles from './BuyToken.module.css'
 
 const USDC_ADDRESS = '0x6DCb60F143Ba8F34e87BC3EceaE49960D490D905'
 const USDT_ADDRESS = '0x4754EF95d4bcBDfF762f2D75CbaD0429967ced46'
@@ -12,7 +12,7 @@ const ETH_ADDRESS = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE'
 
 type PaymentMethod = 'ETH' | 'USDT' | 'USDC'
 
-export function TokenApproval() {
+export function BuyToken() {
   const [inputAmount, setInputAmount] = useState<string>('')
   const [inputType, setInputType] = useState<'FXF' | 'PAYMENT'>('FXF')
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('ETH')
@@ -272,7 +272,7 @@ export function TokenApproval() {
   return (
     <div className={styles.buyTokenContainer}>
       <div className={styles.buyTokenBox}>
-        <h3 className={styles.tokenApprovalTitle}>Approve Tokens</h3>
+        <h3 className={styles.tokenApprovalTitle}>Buy Tokens</h3>
         
         <div className={styles.swapCard}>
           {/* From Section */}
