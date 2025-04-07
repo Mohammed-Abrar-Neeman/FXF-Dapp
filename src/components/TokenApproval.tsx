@@ -38,25 +38,9 @@ export function TokenApproval() {
           break
       }
     } catch (err: any) {
-      console.error('Approval error:', err)
-      // Handle MetaMask specific errors
-      if (err.code) {
-        switch (err.code) {
-          case 4001:
-            toast.error('Transaction rejected by user')
-            break
-          case -32603:
-            toast.error('Insufficient funds or token balance')
-            break
-          case -32002:
-            toast.error('MetaMask is already processing a request')
-            break
-          default:
-            toast.error(`Transaction failed: ${err.message || err.code}`)
-        }
-      } else {
-        toast.error(`Failed to approve tokens: ${err.message || 'Unknown error'}`)
-      }
+      // Extract just the error message before the first newline or "Request Arguments"
+      const errorMessage = err.message.split('\n')[0].split('Request Arguments')[0].trim()
+      toast.error(errorMessage)
     }
   }
 
@@ -94,7 +78,7 @@ export function TokenApproval() {
 
         {error && (
           <div className="text-red-500 text-sm mt-2">
-            Error: {error.message}
+            {error.message.split('\n')[0].split('Request Arguments')[0].trim()}
           </div>
         )}
 
@@ -106,4 +90,4 @@ export function TokenApproval() {
       </div>
     </div>
   )
-}
+} 
