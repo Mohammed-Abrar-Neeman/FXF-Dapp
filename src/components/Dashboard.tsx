@@ -2,6 +2,7 @@
 
 import TokenInfo from './TokenInfo'
 import SaleInfo from './SaleInfo'
+import { TokenApproval } from './TokenApproval'
 
 export default function Dashboard() {
   return (
@@ -10,6 +11,7 @@ export default function Dashboard() {
         <TokenInfo />
         {/* <BuyToken /> */}
         <SaleInfo />
+        <TokenApproval />
       </div>
 
       <style jsx>{`
