@@ -1,0 +1,239 @@
+.buyTokenContainer {
+  width: 100%;
+  margin: 80px 0;
+  display: flex;
+  justify-content: center;
+}
+
+.buyTokenBox {
+  max-width: 480px;
+  width: 100%;
+  background: white;
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border: 1px solid #E5E7EB;
+}
+
+.title {
+  font-size: 22px;
+  font-weight: 600;
+  color: #1F2937;
+  margin-bottom: 24px;
+  text-align: center;
+  position: relative;
+}
+
+.title:after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 3px;
+  background: #2563EB;
+  border-radius: 2px;
+}
+
+.swapCard {
+  background: white;
+  border-radius: 16px;
+  padding: 16px;
+  border: 1px solid #E5E7EB;
+  margin-bottom: 20px;
+}
+
+.swapSection {
+  background: #F9FAFB;
+  border: 1px solid #E5E7EB;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 4px;
+}
+
+.swapHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  color: #6B7280;
+  font-size: 14px;
+}
+
+.balance {
+  color: #374151;
+  font-weight: 500;
+}
+
+.inputSection {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.inputSection input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: #1F2937;
+  font-size: 24px;
+  font-family: monospace;
+  outline: none;
+  padding: 4px 0;
+  text-align: left;
+}
+
+.tokenSelect {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  justify-content: center;
+}
+
+.tokenButton {
+  background: white;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  color: #374151;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 6px 12px;
+  transition: all 0.2s;
+}
+
+.tokenButton:hover {
+  background: #F3F4F6;
+  border-color: #D1D5DB;
+}
+
+.tokenButton.active {
+  background: #2563EB;
+  border-color: #2563EB;
+  color: white;
+}
+
+.tokenDisplay {
+  margin-bottom: 12px;
+  display: block;
+  text-align: center;
+  width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.swapArrow {
+  color: #9CA3AF;
+  font-size: 24px;
+  text-align: center;
+  margin: 8px 0;
+  background: white;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid #E5E7EB;
+  margin: 8px auto;
+}
+
+.buyButton {
+  width: 100%;
+  max-width: 300px;
+  background: #2563EB;
+  border: none;
+  border-radius: 12px;
+  color: white;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 500;
+  margin: 16px auto 0;
+  padding: 12px;
+  transition: all 0.2s;
+  display: block;
+}
+
+.buyButton:hover:not(:disabled) {
+  background: #1D4ED8;
+}
+
+.buyButton:disabled {
+  background: #E5E7EB;
+  color: #9CA3AF;
+  cursor: not-allowed;
+}
+
+.balanceSection {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.maxButton {
+  background: transparent;
+  border: 1px solid #E5E7EB;
+  border-radius: 4px;
+  color: #2563EB;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 6px;
+  transition: all 0.2s;
+}
+
+.maxButton:hover {
+  background: #EFF6FF;
+  border-color: #2563EB;
+}
+
+.errorMessage {
+  background: #FEF2F2;
+  border: 1px solid #FCA5A5;
+  color: #B91C1C;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  margin-top: 12px;
+  text-align: center;
+}
+
+.successMessage {
+  background: #ECFDF5;
+  border: 1px solid #6EE7B7;
+  color: #065F46;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  margin-top: 12px;
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .buyTokenContainer {
+    margin: 60px 16px;
+  }
+  
+  .buyTokenBox {
+    padding: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .inputSection {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .inputSection input {
+    width: 100%;
+    margin-bottom: 8px;
+    font-size: 18px;
+  }
+  
+  .tokenSelect, .tokenDisplay {
+    margin-left: 0;
+    align-self: flex-end;
+  }
+} 

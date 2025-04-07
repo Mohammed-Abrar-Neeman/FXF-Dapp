@@ -4,6 +4,7 @@ import { useSaleContractRead } from '@/hooks/useSaleContract'
 import { useClientMounted } from "@/hooks/useClientMount"
 import { formatUnits } from 'viem'
 import UserVestingInfo from './UserVestingInfo'
+import styles from './SaleInfo.module.css'
 
 export default function SaleInfo() {
   const mounted = useClientMounted()
@@ -96,151 +97,53 @@ export default function SaleInfo() {
 
   return (
     <>
-      <div className="sale-info-container">
-        <div className="sale-info">
-          <h2 className="title">Token Price Information</h2>
-          <div className="info-grid">
-            <div className="info-card">
+      <div className={styles.saleInfoContainer}>
+        <div className={styles.saleInfo}>
+          <h2 className={styles.title}>Token Price Information</h2>
+          <div className={styles.infoGrid}>
+            <div className={styles.infoCard}>
               <h3>FXF Price</h3>
               <p>{formatFxfPrice(fxfPrice as bigint)}</p>
-              <span className="subtitle">Current token price</span>
+              <span className={styles.subtitle}>Current token price</span>
             </div>
 
-            <div className="info-card">
+            <div className={styles.infoCard}>
               <h3>ETH Price</h3>
               <p>{formatEthPrice(ethPrice as bigint)}</p>
-              <span className="subtitle">Current ETH price</span>
+              <span className={styles.subtitle}>Current ETH price</span>
             </div>
 
-            <div className="info-card">
+            <div className={styles.infoCard}>
               <h3>ETH for 1 FXF</h3>
               <p>{formatEthAmount(ethForOneFxf as bigint)}</p>
-              <span className="subtitle">ETH needed for 1 FXF</span>
+              <span className={styles.subtitle}>ETH needed for 1 FXF</span>
             </div>
           </div>
 
-          <h2 className="title" style={{ marginTop: '40px' }}>Sale Statistics</h2>
-          <div className="info-grid">
-            <div className="info-card">
+          <h2 className={styles.title} style={{ marginTop: '40px' }}>Sale Statistics</h2>
+          <div className={styles.infoGrid}>
+            <div className={styles.infoCard}>
               <h3>Available Balance</h3>
               <p>{formatFxfAmount(availableBalance as bigint)}</p>
-              <span className="subtitle">Remaining tokens for sale</span>
+              <span className={styles.subtitle}>Remaining tokens for sale</span>
             </div>
 
-            <div className="info-card">
+            <div className={styles.infoCard}>
               <h3>Tokens Sold</h3>
               <p>{formatFxfAmount(tokensSold as bigint)}</p>
-              <span className="subtitle">Total FXF tokens sold</span>
+              <span className={styles.subtitle}>Total FXF tokens sold</span>
             </div>
 
-            <div className="info-card">
+            <div className={styles.infoCard}>
               <h3>Total Vested Amount</h3>
               <p>{formatFxfAmount(totalVestedAmount as bigint)}</p>
-              <span className="subtitle">Tokens in vesting</span>
+              <span className={styles.subtitle}>Tokens in vesting</span>
             </div>
           </div>
         </div>
-        <style jsx>{`
-          .sale-info-container {
-            display: flex;
-            justify-content: center;
-            width: 100%;
-            padding: 0 16px;
-          }
-
-          .sale-info {
-            width: 100%;
-            max-width: 1000px;
-            margin-top: 40px;
-          }
-
-          .title {
-            font-size: 24px;
-            font-weight: 600;
-            margin-bottom: 24px;
-            color: #1a1a1a;
-            position: relative;
-            display: inline-block;
-          }
-
-          .title:after {
-            content: '';
-            position: absolute;
-            bottom: -8px;
-            left: 0;
-            width: 60px;
-            height: 3px;
-            background: #2563EB;
-            border-radius: 2px;
-          }
-
-          .info-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 20px;
-          }
-
-          .info-card {
-            background: #f8f9fa;
-            padding: 24px;
-            border-radius: 12px;
-            transition: all 0.3s ease;
-            min-width: 0;
-            position: relative;
-            border: 1px solid #E5E7EB;
-          }
-
-          .info-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-          }
-
-          .info-card h3 {
-            font-size: 14px;
-            color: #666;
-            margin: 0 0 8px 0;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-          }
-
-          .info-card p {
-            font-size: 24px;
-            font-weight: 600;
-            color: #1a1a1a;
-            margin: 0;
-          }
-
-          .subtitle {
-            display: block;
-            font-size: 12px;
-            color: #666;
-            margin-top: 8px;
-          }
-
-          @media (max-width: 768px) {
-            .sale-info {
-              margin-top: 32px;
-            }
-
-            .info-grid {
-              grid-template-columns: 1fr;
-            }
-
-            .info-card {
-              padding: 20px;
-            }
-          }
-
-          @media (min-width: 769px) and (max-width: 1024px) {
-            .info-grid {
-              grid-template-columns: repeat(2, 1fr);
-            }
-          }
-        `}</style>
       </div>
       
       <UserVestingInfo />
-      {/* <RaffleInfo /> */}
     </>
   )
 } 

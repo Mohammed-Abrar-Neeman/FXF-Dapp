@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
-
-
-import { headers } from 'next/headers' // added
-import './globals.css';
+import { headers } from 'next/headers'
 import ContextProvider from '@/context'
 import { Toaster } from 'react-hot-toast'
+import './globals.css'
 
 export const metadata: Metadata = {
   title: "Fast X Furious",
@@ -21,6 +19,9 @@ export default async function RootLayout({
 
   return (
     <html lang="en">
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+      </head>
       <body>
         <ContextProvider cookies={cookies}>
           {children}
