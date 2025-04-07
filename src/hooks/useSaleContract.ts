@@ -139,8 +139,16 @@ export function useSaleContractWrite(functionName: string) {
     }
   }
 
+  const setHash = (hash: string | null) => {
+    setTxState(prev => ({
+      ...prev,
+      hash
+    }))
+  }
+
   return {
     write,
+    setHash,
     ...txState
   }
 } 

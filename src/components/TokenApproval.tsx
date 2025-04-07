@@ -19,17 +19,61 @@ export function TokenApproval() {
   const { address } = useAccount()
 
   // Use token contract hooks for USDC and USDT
-  const { write: approveUsdcWrite, isLoading: isApprovingUsdc, isSuccess: isApproveUsdcSuccess, error: approveUsdcError, status: approveUsdcStatus, hash: approveUsdcHash } = useTokenContractWrite(USDC_ADDRESS, 'approve')
-  const { write: approveUsdtWrite, isLoading: isApprovingUsdt, isSuccess: isApproveUsdtSuccess, error: approveUsdtError, status: approveUsdtStatus, hash: approveUsdtHash } = useTokenContractWrite(USDT_ADDRESS, 'approve')
-  const { write: buyWrite, isLoading: isBuying, isSuccess: isBuySuccess, error: buyError, status: buyStatus, hash: buyHash } = useSaleContractWrite('buy')
+  const { write: approveUsdcWrite, isLoading: isApprovingUsdc, isSuccess: isApproveUsdcSuccess, error: approveUsdcError, status: approveUsdcStatus, hash: approveUsdcHash, setHash: setApproveUsdcHash } = useTokenContractWrite(USDC_ADDRESS, 'approve')
+  const { write: approveUsdtWrite, isLoading: isApprovingUsdt, isSuccess: isApproveUsdtSuccess, error: approveUsdtError, status: approveUsdtStatus, hash: approveUsdtHash, setHash: setApproveUsdtHash } = useTokenContractWrite(USDT_ADDRESS, 'approve')
+  const { write: buyWrite, isLoading: isBuying, isSuccess: isBuySuccess, error: buyError, status: buyStatus, hash: buyHash, setHash: setBuyHash } = useSaleContractWrite('buy')
 
   // Get latest prices
   const { data: ethPrice } = useSaleContractRead('getLatestETHPrice')
   const { data: fxfPrice } = useSaleContractRead('getFxfPrice')
 
   // Get allowances for both USDC and USDT
-  const { data: usdcAllowance } = useTokenContractRead(USDC_ADDRESS, 'allowance', [address, process.env.NEXT_PUBLIC_SALE_CONTRACT_ADDRESS])
-  const { data: usdtAllowance } = useTokenContractRead(USDT_ADDRESS, 'allowance', [address, process.env.NEXT_PUBLIC_SALE_CONTRACT_ADDRESS])
+  const { data: usdcAllowance, refetch: refetchUsdcAllowance, isLoading: isUsdcAllowanceLoading } = useTokenContractRead(USDC_ADDRESS, 'allowance', [address, process.env.NEXT_PUBLIC_SALE_CONTRACT_ADDRESS])
+  const { data: usdtAllowance, refetch: refetchUsdtAllowance, isLoading: isUsdtAllowanceLoading } = useTokenContractRead(USDT_ADDRESS, 'allowance', [address, process.env.NEXT_PUBLIC_SALE_CONTRACT_ADDRESS])
+
+  // Refetch allowances when approval is successful or on component mount
+  useEffect(() => {
+    if (address) {
+      refetchUsdcAllowance()
+      refetchUsdtAllowance()
+    }
+  }, [address, refetchUsdcAllowance, refetchUsdtAllowance])
+
+  // Handle successful approval
+  useEffect(() => {
+    if (isApproveUsdcSuccess) {
+      console.log('USDC Approval successful, refetching allowance')
+      refetchUsdcAllowance()
+    }
+    if (isApproveUsdtSuccess) {
+      console.log('USDT Approval successful, refetching allowance')
+      refetchUsdtAllowance()
+    }
+  }, [isApproveUsdcSuccess, isApproveUsdtSuccess, refetchUsdcAllowance, refetchUsdtAllowance])
+
+  // Handle successful purchase
+  useEffect(() => {
+    if (isBuySuccess) {
+      console.log('Purchase successful, resetting and checking allowances')
+      // Reset input amount after successful purchase
+      setInputAmount('')
+      // Refetch allowances to check if more approval is needed
+      if (paymentMethod === 'USDC') {
+        console.log('Refetching USDC allowance')
+        refetchUsdcAllowance()
+      } else if (paymentMethod === 'USDT') {
+        console.log('Refetching USDT allowance')
+        refetchUsdtAllowance()
+      }
+    }
+  }, [isBuySuccess, paymentMethod, refetchUsdcAllowance, refetchUsdtAllowance])
+
+  // Add logging for allowance changes
+  useEffect(() => {
+    console.log('Allowance values updated:')
+    console.log('USDC Allowance:', usdcAllowance?.toString())
+    console.log('USDT Allowance:', usdtAllowance?.toString())
+  }, [usdcAllowance, usdtAllowance])
 
   // Get token address based on payment method
   const tokenAddress = paymentMethod === 'USDC' ? USDC_ADDRESS : paymentMethod === 'USDT' ? USDT_ADDRESS : undefined
@@ -180,15 +224,49 @@ export function TokenApproval() {
 
   // Update the approval check logic
   const needsApproval = () => {
-    if (paymentMethod === 'ETH') return false
+    if (paymentMethod === 'ETH') {
+      console.log('Payment method is ETH, no approval needed')
+      return false
+    }
+    if (!inputAmount || inputAmount === '0') {
+      console.log('No input amount, no approval needed')
+      return false
+    }
+    if (isUsdcAllowanceLoading || isUsdtAllowanceLoading) {
+      console.log('Allowance loading, showing approve button')
+      return true
+    }
     
     const amount = parseUnits(paymentAmount || '0', 6)
+    console.log('Current allowance check:')
+    console.log('Payment Method:', paymentMethod)
+    console.log('Input Amount:', inputAmount)
+    console.log('Payment Amount:', paymentAmount)
+    console.log('Parsed Amount:', amount.toString())
+    
     if (paymentMethod === 'USDC') {
-      return !usdcAllowance || BigInt(usdcAllowance.toString()) < amount
+      console.log('USDC Allowance:', usdcAllowance?.toString())
+      const needs = !usdcAllowance || BigInt(usdcAllowance.toString()) < amount
+      console.log('USDC Needs Approval:', needs)
+      return needs
     } else if (paymentMethod === 'USDT') {
-      return !usdtAllowance || BigInt(usdtAllowance.toString()) < amount
+      console.log('USDT Allowance:', usdtAllowance?.toString())
+      const needs = !usdtAllowance || BigInt(usdtAllowance.toString()) < amount
+      console.log('USDT Needs Approval:', needs)
+      return needs
     }
     return false
+  }
+
+  // Handle payment method change
+  const handlePaymentMethodChange = (method: PaymentMethod) => {
+    setPaymentMethod(method)
+    setInputAmount('')
+    setInputType('PAYMENT')
+    // Reset all transaction states
+    setApproveUsdcHash(null)
+    setApproveUsdtHash(null)
+    setBuyHash(null)
   }
 
   return (
@@ -222,7 +300,7 @@ export function TokenApproval() {
                   key={method}
                   type="button"
                   className={`${styles.tokenButton} ${paymentMethod === method ? styles.active : ''}`}
-                  onClick={() => setPaymentMethod(method as PaymentMethod)}
+                  onClick={() => handlePaymentMethodChange(method as PaymentMethod)}
                 >
                   {method}
                 </button>
@@ -279,7 +357,14 @@ export function TokenApproval() {
           </div>
         </div>
 
-        {paymentMethod !== 'ETH' && needsApproval() ? (
+        {!inputAmount || inputAmount === '0' ? (
+          <button
+            disabled={true}
+            className={styles.approveButton}
+          >
+            Enter Amount
+          </button>
+        ) : paymentMethod !== 'ETH' && needsApproval() ? (
           <button
             onClick={handleApprove}
             disabled={
@@ -304,13 +389,19 @@ export function TokenApproval() {
           </button>
         )}
 
-        {(isApproveUsdcSuccess || isApproveUsdtSuccess) && (
+        {paymentMethod === 'USDC' && approveUsdcHash && (
           <div className={styles.successMessage}>
-            Approval successful! Transaction hash: {isApproveUsdcSuccess ? approveUsdcHash : approveUsdtHash}
+            Approval successful! Transaction hash: {approveUsdcHash}
           </div>
         )}
 
-        {isBuySuccess && (
+        {paymentMethod === 'USDT' && approveUsdtHash && (
+          <div className={styles.successMessage}>
+            Approval successful! Transaction hash: {approveUsdtHash}
+          </div>
+        )}
+
+        {buyHash && (
           <div className={styles.successMessage}>
             Purchase successful! Transaction hash: {buyHash}
           </div>

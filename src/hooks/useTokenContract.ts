@@ -13,12 +13,19 @@ interface TransactionState {
 }
 
 export function useTokenContractRead(address: string, functionName: string, args: any[] = []) {
-  return useReadContract({
+  const { data, error, isLoading, refetch } = useReadContract({
     address: address as `0x${string}`,
     abi: ERC20ABI,
     functionName,
     args,
   })
+
+  return {
+    data,
+    error,
+    isLoading,
+    refetch
+  }
 }
 
 export function useTokenContractWrite(address: string, functionName: string) {
@@ -81,8 +88,12 @@ export function useTokenContractWrite(address: string, functionName: string) {
     } catch (err: any) {
       let errorMessage = 'Transaction failed'
       
+      // Handle RPC errors
+      if (err.name === 'HttpRequestError') {
+        errorMessage = 'Network error: Please check your internet connection and try again'
+      }
       // Handle MetaMask specific errors
-      if (err.code) {
+      else if (err.code) {
         switch (err.code) {
           case 4001:
             errorMessage = 'Transaction rejected by user'
@@ -110,8 +121,22 @@ export function useTokenContractWrite(address: string, functionName: string) {
     }
   }
 
+  const setHash = (hash: string | null) => {
+    setTxState(prev => ({
+      ...prev,
+      hash,
+      isLoading: false,
+      status: hash ? 'pending' : 'idle'
+    }))
+  }
+
   return {
     write,
-    ...txState
+    setHash,
+    isLoading: txState.isLoading || isPending,
+    isSuccess: txState.isSuccess,
+    error: txState.error,
+    status: txState.status,
+    hash: txState.hash
   }
 } 
