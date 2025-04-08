@@ -1,0 +1,254 @@
+.raffleInfo {
+  width: 100%;
+  margin-top: 40px;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 600;
+  margin-bottom: 24px;
+  color: #1a1a1a;
+}
+
+.rafflesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.raffleCard {
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  border: 1px solid #eee;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.raffleCard.completed {
+  background: #f8f9fa;
+}
+
+.raffleHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #eee;
+}
+
+.headerContent {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.raffleHeader h3 {
+  font-size: 16px;
+  margin: 0;
+  color: #666;
+}
+
+.prize {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.status {
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.status.active {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.status.completed {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.infoGrid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.infoColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.infoItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.infoItem label {
+  color: #666;
+  font-size: 12px;
+}
+
+.infoItem span {
+  font-size: 13px;
+  font-weight: 500;
+  color: #1a1a1a;
+}
+
+.paymentsSection {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid #eee;
+}
+
+.paymentsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.paymentItem {
+  background: #f8f9fa;
+  padding: 8px;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.paymentItem label {
+  display: block;
+  font-size: 11px;
+  color: #666;
+  margin-bottom: 2px;
+}
+
+.paymentItem span {
+  font-size: 12px;
+  font-weight: 500;
+  color: #1a1a1a;
+}
+
+.buySection {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #eee;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+.buyButton {
+  background: #1976d2;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+  max-width: 200px;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.buyButton:hover {
+  background: #1565c0;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.buyButton:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.buyButton:disabled {
+  background: #E5E7EB;
+  color: #9CA3AF;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.noRaffles {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 300px;
+  width: 100%;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 40px;
+  background: #f8f9fa;
+  border-radius: 16px;
+  max-width: 500px;
+  border: 1px dashed #d1d5db;
+}
+
+.emptyState svg {
+  color: #9ca3af;
+  margin-bottom: 16px;
+}
+
+.emptyState h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 8px;
+}
+
+.emptyState p {
+  color: #6b7280;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+@media (max-width: 768px) {
+  .rafflesGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .raffleCard {
+    padding: 12px;
+  }
+
+  .buySection {
+    padding-top: 10px;
+    margin-top: 10px;
+  }
+
+  .buyButton {
+    padding: 8px 12px;
+    font-size: 13px;
+    min-height: 36px;
+  }
+}
+
+@media (max-width: 480px) {
+  .raffleCard {
+    padding: 10px;
+  }
+
+  .buyButton {
+    padding: 8px;
+    font-size: 12px;
+    min-height: 32px;
+  }
+} 

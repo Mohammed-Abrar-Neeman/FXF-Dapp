@@ -1,12 +1,12 @@
 import type { NextConfig } from 'next'
 
-const nextConfig: NextConfig = {
+const config: NextConfig = {
   env: {
     NEXT_PUBLIC_SALE_CONTRACT_ADDRESS: process.env.NEXT_PUBLIC_SALE_CONTRACT_ADDRESS,
     NEXT_PUBLIC_RPC_URL: 'https://bsc-testnet.publicnode.com', // More reliable RPC endpoint
     NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID: process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID,
   },
-  webpack: (config: any) => {
+  webpack: (config) => {
     config.resolve.fallback = {
       ...config.resolve.fallback,
       fs: false,
@@ -17,6 +17,10 @@ const nextConfig: NextConfig = {
   },
   reactStrictMode: true,
   swcMinify: true,
+  images: {
+    domains: ['localhost'],
+  },
+  cssModules: true,
 }
 
-export default nextConfig
+export default config

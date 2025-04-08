@@ -2,22 +2,18 @@
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
-  padding: 40px 20px;
+  padding: 20px;
 }
 
 .contentSection {
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-top: 20px;
 }
 
 @media (max-width: 768px) {
   .mainContainer {
-    padding: 20px;
-  }
-
-  .contentSection {
-    padding: 20px;
+    padding: 10px;
   }
 } 
