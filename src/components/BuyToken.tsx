@@ -288,6 +288,7 @@ export function BuyToken() {
                     setInputType('PAYMENT')
                     setInputAmount(getMaxAmount(paymentMethod))
                   }}
+                  disabled={!address}
                 >
                   MAX
                 </button>
@@ -301,6 +302,7 @@ export function BuyToken() {
                   type="button"
                   className={`${styles.tokenButton} ${paymentMethod === method ? styles.active : ''}`}
                   onClick={() => handlePaymentMethodChange(method as PaymentMethod)}
+                  disabled={!address}
                 >
                   {method}
                 </button>
@@ -322,6 +324,7 @@ export function BuyToken() {
                 }}
                 placeholder="0.00"
                 required
+                disabled={!address}
               />
             </div>
           </div>
@@ -352,12 +355,20 @@ export function BuyToken() {
                 }}
                 placeholder="0.00"
                 required
+                disabled={!address}
               />
             </div>
           </div>
         </div>
 
-        {!inputAmount || inputAmount === '0' ? (
+        {!address ? (
+          <button
+            disabled={true}
+            className={styles.approveButton}
+          >
+            Connect Wallet
+          </button>
+        ) : !inputAmount || inputAmount === '0' ? (
           <button
             disabled={true}
             className={styles.approveButton}
