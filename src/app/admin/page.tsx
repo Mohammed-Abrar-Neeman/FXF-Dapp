@@ -11,7 +11,7 @@ import { ConnectButton } from "@/components/ConnectButton"
 export default function AdminPage() {
   const mounted = useClientMounted()
   const { address, isConnected } = useAccount()
-  const { data: owner } = useSaleContractRead('owner')
+  const { data: owner, isLoading: isOwnerLoading } = useSaleContractRead('owner')
 
   if (!mounted) return null
 
@@ -32,6 +32,10 @@ export default function AdminPage() {
       {!isConnected ? (
         <div className={styles.connectMessage}>
           <p>Please connect your wallet to access the admin dashboard</p>
+        </div>
+      ) : isOwnerLoading ? (
+        <div className={styles.loading}>
+          <p>Loading admin status...</p>
         </div>
       ) : !isAdmin ? (
         <div className={styles.accessDenied}>
