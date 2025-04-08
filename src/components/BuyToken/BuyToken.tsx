@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useTokenContractRead, useTokenContractWrite } from '../../hooks/useTokenContract'
 import { useSaleContractRead, useSaleContractWrite } from '../../hooks/useSaleContract'
+import { useClientMounted } from "@/hooks/useClientMount"
 import { toast } from 'react-hot-toast'
 import { formatUnits, parseUnits } from 'viem'
 import { useAccount, useBalance } from 'wagmi'
@@ -13,6 +14,7 @@ const ETH_ADDRESS = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE'
 type PaymentMethod = 'ETH' | 'USDT' | 'USDC'
 
 export function BuyToken() {
+  const mounted = useClientMounted()
   const [inputAmount, setInputAmount] = useState<string>('')
   const [inputType, setInputType] = useState<'FXF' | 'PAYMENT'>('FXF')
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('ETH')
@@ -125,6 +127,8 @@ export function BuyToken() {
   const { data: ethBalance } = useBalance({ address })
   const { data: usdcBalance } = useBalance({ address, token: USDC_ADDRESS })
   const { data: usdtBalance } = useBalance({ address, token: USDT_ADDRESS })
+
+  if (!mounted) return null
 
   const getBalanceForMethod = (method: PaymentMethod) => {
     switch (method) {
