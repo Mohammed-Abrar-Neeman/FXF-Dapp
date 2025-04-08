@@ -71,6 +71,7 @@ contract FxFSale is
         uint256 minimumTickets;   // Minimum number of tickets that need to be sold
         uint256 startTime;        // Start time of the raffle
         string prize;             // Prize description
+        string imageURL;          // image url
         bool completed;           // Whether raffle is completed
         uint256 totalTickets;     // Total tickets sold
         uint256 totalAmount;      // Total amount collected from ticket sales
@@ -358,7 +359,8 @@ contract FxFSale is
         uint256 ticketPrice,
         uint256 minimumTickets,
         uint256 startTime,
-        string calldata prize
+        string calldata prize,
+        string calldata imageurl
     ) external onlyOwner {
         require(ticketPrice > 0, "Invalid ticket price");
         require(minimumTickets > 0, "Invalid minimum tickets");
@@ -370,6 +372,7 @@ contract FxFSale is
         raffle.minimumTickets = minimumTickets;
         raffle.startTime = startTime;
         raffle.prize = prize;
+        raffle.imageURL = imageurl;
         raffle.completed = false;
         raffle.totalTickets = 0;
         raffle.totalAmount = 0;
@@ -441,6 +444,7 @@ contract FxFSale is
         uint256 minimumTickets,
         uint256 startTime,
         string memory prize,
+        string memory imageurl,
         bool completed,
         uint256 totalTickets,
         uint256 totalAmount,
@@ -453,6 +457,7 @@ contract FxFSale is
             raffle.minimumTickets,
             raffle.startTime,
             raffle.prize,
+            raffle.imageURL,
             raffle.completed,
             raffle.totalTickets,
             raffle.totalAmount,
@@ -816,7 +821,7 @@ contract FxFSale is
         }
 
         // Calculate months passed after lock period
-        uint256 monthsAfterLock = (block.timestamp - (purchase.startTime + purchase.lockDuration)) / 5 minutes;
+        uint256 monthsAfterLock = (block.timestamp - (purchase.startTime + purchase.lockDuration)) / 30 days;
         
         // Calculate release percentage (20% per month)
         uint256 releasePercentage = monthsAfterLock * MONTHLY_RELEASE_PERCENTAGE;

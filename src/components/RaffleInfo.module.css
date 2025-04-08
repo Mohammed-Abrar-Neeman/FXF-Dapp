@@ -220,6 +220,20 @@
   line-height: 1.5;
 }
 
+.raffleImage {
+  width: 100%;
+  height: 200px;
+  overflow: hidden;
+  border-radius: 8px 8px 0 0;
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.raffleImage img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 @media (max-width: 768px) {
   .rafflesGrid {
     grid-template-columns: 1fr;

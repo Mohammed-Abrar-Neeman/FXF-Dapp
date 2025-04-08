@@ -125,6 +125,7 @@ export default function RaffleInfo() {
               minimumTickets,
               startTime,
               prize,
+              imageurl,
               completed,
               totalTickets,
               totalAmount,
@@ -140,6 +141,7 @@ export default function RaffleInfo() {
               minimumTickets: BigInt(minimumTickets?.toString() || '0'),
               startTime: BigInt(startTime?.toString() || '0'),
               prize: prize || 'TBA',
+              imageurl: imageurl || '',
               completed: completed || false,
               totalTickets: BigInt(totalTickets?.toString() || '0'),
               totalAmount: BigInt(totalAmount?.toString() || '0'),
@@ -152,6 +154,11 @@ export default function RaffleInfo() {
 
             return (
               <div key={index} className={`${styles.raffleCard} ${safeRaffle.completed ? styles.completed : ''}`}>
+                {safeRaffle.imageurl && (
+                  <div className={styles.raffleImage}>
+                    <img src={safeRaffle.imageurl} alt={`Raffle ${index + 1}`} />
+                  </div>
+                )}
                 <div className={styles.raffleHeader}>
                   <div className={styles.headerContent}>
                     <h3>Raffle #{index + 1}</h3>
