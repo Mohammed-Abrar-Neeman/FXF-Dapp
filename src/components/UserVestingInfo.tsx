@@ -385,27 +385,43 @@ interface VestingData {
   vestedAmounts: bigint[]
 }
 
-function ReleaseButton({ raffleId }: { raffleId: bigint }) {
-  const { write: releaseTokens, isLoading } = useSaleContractWrite('releaseVestedTokens', {
-    onSuccess: () => {
-      toast.success('Tokens released successfully!')
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to release tokens')
-    }
-  })
+function ReleaseButton({ raffleId, amountToRelease }: { raffleId: bigint, amountToRelease: bigint }) {
+  const { write, isLoading, status } = useSaleContractWrite('releaseVestedTokens')
 
-  const handleRelease = () => {
-    releaseTokens([raffleId])
+  useEffect(() => {
+    if (status === 'error') {
+      toast.error('Failed to release tokens')
+    } else if (status === 'success') {
+      toast.success('Tokens released successfully!')
+    }
+  }, [status])
+
+  const handleRelease = async () => {
+    try {
+      await write([raffleId])
+    } catch (error: any) {
+      // Handle MetaMask specific errors
+      if (error.message?.includes('user rejected')) {
+        toast.error('Transaction was rejected by user')
+      } else if (error.message?.includes('insufficient funds')) {
+        toast.error('Insufficient funds for gas')
+      } else if (error.message?.includes('nonce')) {
+        toast.error('Transaction nonce error. Please try again')
+      } else {
+        toast.error(error.message || 'Failed to release tokens')
+      }
+    }
   }
+
+  const isDisabled = amountToRelease === BigInt(0) || isLoading || status === 'preparing' || status === 'pending'
 
   return (
     <button 
       onClick={handleRelease}
-      disabled={isLoading}
+      disabled={isDisabled}
       className={styles.releaseButton}
     >
-      {isLoading ? 'Releasing...' : 'Release Tokens'}
+      {isLoading || status === 'preparing' || status === 'pending' ? 'Releasing...' : 'Release Tokens'}
     </button>
   )
 }
@@ -420,10 +436,12 @@ export default function UserVestingInfo() {
     [],
     {
       select: (data: unknown): bigint => {
+        console.log('Raw vesting duration from contract:', data)
         if (typeof data === 'string' || typeof data === 'number') {
           return BigInt(data)
         }
-        return BigInt(0)
+        // Default to 3600 (1 hour) if no duration is set
+        return BigInt(3600)
       }
     }
   )
@@ -431,54 +449,141 @@ export default function UserVestingInfo() {
   // Define calculateRemainingTime first
   const calculateRemainingTime = useCallback((startTime: bigint) => {
     const now = BigInt(Math.floor(Date.now() / 1000))
-    const duration = typeof vestingDuration === 'bigint' ? vestingDuration : BigInt(0)
+    // Ensure we always have a valid duration
+    const duration = (typeof vestingDuration === 'bigint' && vestingDuration > 0) 
+      ? vestingDuration 
+      : BigInt(3600) // 1 hour in seconds as fallback
     const endTime = startTime + duration
-    const remaining = endTime - now
 
-    if (remaining <= BigInt(0)) return { 
+    // Detailed debug logs
+    console.log('🕒 Detailed Time Calculation:', {
+      currentTime: {
+        timestamp: now.toString(),
+        date: new Date(Number(now) * 1000).toLocaleString(),
+      },
+      vestingDetails: {
+        startTimestamp: startTime.toString(),
+        startDate: new Date(Number(startTime) * 1000).toLocaleString(),
+        endTimestamp: endTime.toString(),
+        endDate: new Date(Number(endTime) * 1000).toLocaleString(),
+        durationSeconds: duration.toString(),
+        durationHours: Number(duration) / 3600,
+        rawVestingDuration: vestingDuration?.toString() || 'not set'
+      },
+      conditions: {
+        isBeforeStart: now < startTime,
+        isDuringVesting: now >= startTime && now < endTime,
+        isAfterEnd: now >= endTime
+      }
+    })
+
+    // If current time is before start time
+    if (now < startTime) {
+      const remaining = startTime - now
+      const days = Number(remaining / BigInt(86400))
+      const hours = Number((remaining % BigInt(86400)) / BigInt(3600))
+      const minutes = Number((remaining % BigInt(3600)) / BigInt(60))
+      const seconds = Number(remaining % BigInt(60))
+
+      console.log('⏳ Time until start:', {
+        remaining: remaining.toString(),
+        formatted: `${days}d ${hours}h ${minutes}m ${seconds}s`
+      })
+
+      return { 
+        days, 
+        hours, 
+        minutes, 
+        seconds, 
+        isComplete: false,
+        notStarted: true,
+        isVesting: false
+      }
+    }
+
+    // If vesting is in progress
+    if (now >= startTime && now < endTime) {
+      const remaining = endTime - now
+      const days = Number(remaining / BigInt(86400))
+      const hours = Number((remaining % BigInt(86400)) / BigInt(3600))
+      const minutes = Number((remaining % BigInt(3600)) / BigInt(60))
+      const seconds = Number(remaining % BigInt(60))
+
+      console.log('⌛ Vesting in progress:', {
+        remaining: remaining.toString(),
+        formatted: `${days}d ${hours}h ${minutes}m ${seconds}s`
+      })
+
+      return { 
+        days, 
+        hours, 
+        minutes, 
+        seconds, 
+        isComplete: false,
+        notStarted: false,
+        isVesting: true
+      }
+    }
+
+    console.log('✅ Vesting completed')
+
+    // Vesting completed
+    return { 
       days: 0, 
       hours: 0, 
       minutes: 0, 
       seconds: 0, 
-      isComplete: true 
+      isComplete: true,
+      notStarted: false,
+      isVesting: false
     }
-
-    const days = Number(remaining / BigInt(86400))
-    const hours = Number((remaining % BigInt(86400)) / BigInt(3600))
-    const minutes = Number((remaining % BigInt(3600)) / BigInt(60))
-    const seconds = Number(remaining % BigInt(60))
-
-    return { days, hours, minutes, seconds, isComplete: false }
   }, [vestingDuration])
 
-  // Then define VestingCountdown
+  // Then define VestingCountdown with better error handling
   const VestingCountdown = useCallback(({ startTime }: { startTime: bigint }) => {
-    const [remaining, setRemaining] = useState(() => calculateRemainingTime(startTime))
+    const format = (num: number) => num.toString().padStart(2, '0')
+    const [remaining, setRemaining] = useState(() => {
+      const initial = calculateRemainingTime(startTime)
+      console.log('🔄 Initial countdown state:', initial)
+      return initial
+    })
 
     useEffect(() => {
-      setRemaining(calculateRemainingTime(startTime))
-
-      const timer = setInterval(() => {
+      const updateTimer = () => {
         const newRemaining = calculateRemainingTime(startTime)
+        console.log('🔄 Updating countdown:', newRemaining)
         setRemaining(newRemaining)
+        return newRemaining
+      }
 
-        if (newRemaining.isComplete) {
-          clearInterval(timer)
-        }
-      }, 1000)
+      // Initial update
+      const initial = updateTimer()
 
-      return () => clearInterval(timer)
-    }, [startTime])
+      // Set up interval only if not complete
+      const timer = !initial.isComplete ? setInterval(updateTimer, 1000) : null
+
+      return () => {
+        if (timer) clearInterval(timer)
+      }
+    }, [startTime, calculateRemainingTime])
+
+    console.log('🎯 Rendering countdown state:', remaining)
 
     if (remaining.isComplete) {
       return <span className={styles.completed}>Vesting Complete</span>
     }
 
-    const format = (num: number) => num.toString().padStart(2, '0')
+    if (remaining.notStarted) {
+      return (
+        <span className={styles.notStarted}>
+          Starts in: {remaining.days}d {format(remaining.hours)}:{format(remaining.minutes)}:{format(remaining.seconds)}
+        </span>
+      )
+    }
 
     return (
       <span className={styles.countdown}>
-        {remaining.days}d {format(remaining.hours)}:{format(remaining.minutes)}:{format(remaining.seconds)}
+        Vesting: {remaining.days}d {format(remaining.hours)}:{format(remaining.minutes)}:{format(remaining.seconds)}
       </span>
     )
   }, [calculateRemainingTime])
@@ -600,6 +705,24 @@ export default function UserVestingInfo() {
     }
   }
 
+  const formatDuration = (duration: unknown) => {
+    if (typeof duration === 'bigint') {
+      const seconds = Number(duration)
+      const hours = Math.floor(seconds / 3600)
+      const minutes = Math.floor((seconds % 3600) / 60)
+      const remainingSeconds = seconds % 60
+
+      if (hours > 0) {
+        return `${hours} hour${hours > 1 ? 's' : ''}`
+      } else if (minutes > 0) {
+        return `${minutes} minute${minutes > 1 ? 's' : ''}`
+      } else {
+        return `${remainingSeconds} second${remainingSeconds !== 1 ? 's' : ''}`
+      }
+    }
+    return '0 seconds'
+  }
+
   return (
     <div className={styles.vestingInfoContainer}>
       <div className={styles.vestingInfo}>
@@ -627,7 +750,7 @@ export default function UserVestingInfo() {
                       </div>
                       <div className={styles.infoRow}>
                         <span>Vested Amount:</span>
-                        <span>{formatFxfAmount(purchase.vestedAmount)}</span>
+                        <span>{formatFxfAmount(purchase.amount)}</span>
                       </div>
                       <div className={styles.infoRow}>
                         <span>Amount to be Released:</span>
@@ -639,7 +762,7 @@ export default function UserVestingInfo() {
                       </div>
                       <div className={styles.infoRow}>
                         <span>Vesting Period:</span>
-                        <span>180 days</span>
+                        <span>{formatDuration(vestingDuration)}</span>
                       </div>
                       <div className={`${styles.infoRow} ${styles.countdownRow}`}>
                         <span>Time Remaining:</span>
@@ -647,7 +770,10 @@ export default function UserVestingInfo() {
                       </div>
                       {calculateRemainingTime(purchase.startTime).isComplete && (
                         <div className={styles.releaseRow}>
-                          <ReleaseButton raffleId={raffle.raffleId} />
+                          <ReleaseButton 
+                            raffleId={raffle.raffleId} 
+                            amountToRelease={BigInt(purchase.vestedAmount) - BigInt(purchase.releasedAmount)} 
+                          />
                         </div>
                       )}
                     </div>
