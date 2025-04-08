@@ -159,6 +159,7 @@ export default function BuyRaffleModal({ isOpen, onClose, raffleId, ticketPrice,
       setIsApproveLoading(false)
       setHasAllowance(true)
       refetchAllowance?.()
+      toast.success('Token approved successfully')
     }
   }, [approvalTxHash, isApprovalSuccess, refetchAllowance])
 
@@ -208,7 +209,10 @@ export default function BuyRaffleModal({ isOpen, onClose, raffleId, ticketPrice,
 
   // Handle approval
   const handleApprove = async () => {
-    if (!address || !tokenAddress) return
+    if (!address || !tokenAddress) {
+      toast.error('Please connect your wallet')
+      return
+    }
     
     setIsApproveLoading(true)
     
@@ -219,9 +223,11 @@ export default function BuyRaffleModal({ isOpen, onClose, raffleId, ticketPrice,
       const tx = await approveToken([process.env.NEXT_PUBLIC_SALE_CONTRACT_ADDRESS as `0x${string}`, exactAmount])
       if (tx) {
         setApprovalTxHash(tx as `0x${string}`)
+        toast.success('Approval transaction sent')
       }
     } catch (error) {
       console.error('Approval error:', error)
+      toast.error('Failed to approve token. Please try again.')
       setIsApproveLoading(false)
       setApprovalTxHash(undefined)
     }
@@ -248,6 +254,7 @@ export default function BuyRaffleModal({ isOpen, onClose, raffleId, ticketPrice,
     if (isPurchaseSuccess) {
       setPurchaseTxHash(undefined)
       setIsPurchaseLoading(false)
+      toast.success('Tickets purchased successfully!')
       onSuccess?.()
       onClose()
     }
@@ -256,6 +263,26 @@ export default function BuyRaffleModal({ isOpen, onClose, raffleId, ticketPrice,
   // Handle purchase
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    if (!address) {
+      toast.error('Please connect your wallet')
+      return
+    }
+
+    if (paymentMethod === 'ETH' && (!ethBalance || Number(ethBalance.value) < Number(parseUnits(paymentAmount, 18)))) {
+      toast.error('Insufficient ETH balance')
+      return
+    }
+
+    if (paymentMethod === 'USDC' && (!usdcBalance || Number(usdcBalance.value) < Number(parseUnits(paymentAmount, 6)))) {
+      toast.error('Insufficient USDC balance')
+      return
+    }
+
+    if (paymentMethod === 'USDT' && (!usdtBalance || Number(usdtBalance.value) < Number(parseUnits(paymentAmount, 6)))) {
+      toast.error('Insufficient USDT balance')
+      return
+    }
     
     try {
       setIsPurchaseLoading(true)
@@ -282,9 +309,11 @@ export default function BuyRaffleModal({ isOpen, onClose, raffleId, ticketPrice,
 
       if (tx) {
         setPurchaseTxHash(tx as `0x${string}`)
+        toast.success('Purchase transaction sent')
       }
     } catch (error) {
       console.error('Purchase error:', error)
+      toast.error('Failed to purchase tickets. Please try again.')
       setIsPurchaseLoading(false)
       setPurchaseTxHash(undefined)
     }
