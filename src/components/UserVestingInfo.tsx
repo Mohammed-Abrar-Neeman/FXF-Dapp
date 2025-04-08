@@ -6,6 +6,7 @@ import { formatUnits } from 'viem'
 import { useAccount } from 'wagmi'
 import { useMemo, useState, useEffect, useCallback } from 'react'
 import styles from './UserVestingInfo.module.css'
+import { toast } from 'react-hot-toast'
 // import FXFSaleABI from '../abi/FXFSale.json'
 // import { useWaitForTransactionReceipt, useWriteContract } from 'wagmi'
 // import { toast } from 'react-hot-toast'
@@ -384,6 +385,31 @@ interface VestingData {
   vestedAmounts: bigint[]
 }
 
+function ReleaseButton({ raffleId }: { raffleId: bigint }) {
+  const { write: releaseTokens, isLoading } = useSaleContractWrite('releaseVestedTokens', {
+    onSuccess: () => {
+      toast.success('Tokens released successfully!')
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to release tokens')
+    }
+  })
+
+  const handleRelease = () => {
+    releaseTokens([raffleId])
+  }
+
+  return (
+    <button 
+      onClick={handleRelease}
+      disabled={isLoading}
+      className={styles.releaseButton}
+    >
+      {isLoading ? 'Releasing...' : 'Release Tokens'}
+    </button>
+  )
+}
+
 export default function UserVestingInfo() {
   const mounted = useClientMounted()
   const { address: userAddress } = useAccount()
@@ -601,7 +627,7 @@ export default function UserVestingInfo() {
                       </div>
                       <div className={styles.infoRow}>
                         <span>Vested Amount:</span>
-                        <span>{formatFxfAmount(BigInt(purchase.amount))}</span>
+                        <span>{formatFxfAmount(purchase.vestedAmount)}</span>
                       </div>
                       <div className={styles.infoRow}>
                         <span>Amount to be Released:</span>
@@ -609,7 +635,7 @@ export default function UserVestingInfo() {
                       </div>
                       <div className={styles.infoRow}>
                         <span>Start Date:</span>
-                        <span>{formatDate(BigInt(purchase.startTime))}</span>
+                        <span>{formatDate(purchase.startTime)}</span>
                       </div>
                       <div className={styles.infoRow}>
                         <span>Vesting Period:</span>
@@ -617,15 +643,13 @@ export default function UserVestingInfo() {
                       </div>
                       <div className={`${styles.infoRow} ${styles.countdownRow}`}>
                         <span>Time Remaining:</span>
-                        <VestingCountdown startTime={BigInt(purchase.startTime)} />
+                        <VestingCountdown startTime={purchase.startTime} />
                       </div>
-
-                      {/* <div className={styles.releaseRow}>
-                        <ReleaseButton 
-                          raffleId={raffle.raffleId} 
-                          isComplete={calculateRemainingTime(BigInt(purchase.startTime)).isComplete}
-                        />
-                      </div> */}
+                      {calculateRemainingTime(purchase.startTime).isComplete && (
+                        <div className={styles.releaseRow}>
+                          <ReleaseButton raffleId={raffle.raffleId} />
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
