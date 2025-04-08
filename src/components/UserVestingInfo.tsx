@@ -390,7 +390,7 @@ function ReleaseButton({ raffleId, amountToRelease }: { raffleId: bigint, amount
 
   useEffect(() => {
     if (status === 'error') {
-      toast.error('Failed to release tokens')
+      // Don't show error toast here as we'll handle it in the catch block
     } else if (status === 'success') {
       toast.success('Tokens released successfully!')
     }
@@ -408,7 +408,7 @@ function ReleaseButton({ raffleId, amountToRelease }: { raffleId: bigint, amount
       } else if (error.message?.includes('nonce')) {
         toast.error('Transaction nonce error. Please try again')
       } else {
-        toast.error(error.message || 'Failed to release tokens')
+        toast.error('Failed to release tokens')
       }
     }
   }
@@ -734,23 +734,18 @@ export default function UserVestingInfo() {
           {raffleVestingData.map((raffle) => (
             <div key={raffle.raffleId.toString()} className={styles.raffleCard}>
               <h3>Raffle #{raffle.raffleId.toString()}</h3>
-              
               <div className={styles.purchasesGrid}>
                 {raffle.purchases.map((purchase, index) => (
                   <div key={index} className={styles.purchaseCard}>
                     <h4>Purchase #{index + 1}</h4>
                     <div className={styles.purchaseInfo}>
                       <div className={styles.infoRow}>
-                        <span>Total Amount:</span>
+                        <span>Total Vested Amount:</span>
                         <span>{formatFxfAmount(purchase.amount)}</span>
                       </div>
                       <div className={styles.infoRow}>
                         <span>Released:</span>
                         <span>{formatFxfAmount(purchase.releasedAmount)}</span>
-                      </div>
-                      <div className={styles.infoRow}>
-                        <span>Vested Amount:</span>
-                        <span>{formatFxfAmount(purchase.amount)}</span>
                       </div>
                       <div className={styles.infoRow}>
                         <span>Amount to be Released:</span>
@@ -768,17 +763,30 @@ export default function UserVestingInfo() {
                         <span>Time Remaining:</span>
                         <VestingCountdown startTime={purchase.startTime} />
                       </div>
-                      {calculateRemainingTime(purchase.startTime).isComplete && (
-                        <div className={styles.releaseRow}>
-                          <ReleaseButton 
-                            raffleId={raffle.raffleId} 
-                            amountToRelease={BigInt(purchase.vestedAmount) - BigInt(purchase.releasedAmount)} 
-                          />
-                        </div>
-                      )}
                     </div>
                   </div>
                 ))}
+              </div>
+              <div className={styles.releaseRow}>
+                {(() => {
+                  const totalToRelease = raffle.purchases.reduce((sum, purchase) => {
+                    return sum + (BigInt(purchase.vestedAmount) - BigInt(purchase.releasedAmount));
+                  }, BigInt(0));
+                  
+                  return (
+                    <>
+                      <div className={styles.amountToRelease}>
+                        Amount to be Released: {formatFxfAmount(totalToRelease)}
+                      </div>
+                      {totalToRelease > BigInt(0) && (
+                        <ReleaseButton 
+                          raffleId={raffle.raffleId} 
+                          amountToRelease={totalToRelease} 
+                        />
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             </div>
           ))}
