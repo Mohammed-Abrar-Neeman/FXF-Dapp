@@ -20,7 +20,6 @@ const config: NextConfig = {
   images: {
     domains: ['localhost'],
   },
-  cssModules: true,
 }
 
 export default config
