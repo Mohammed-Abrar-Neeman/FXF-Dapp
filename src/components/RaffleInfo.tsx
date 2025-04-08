@@ -8,7 +8,7 @@ import { useMemo, useState } from 'react'
 import FXFSaleABI from '../abi/FXFSale.json'
 import type { Abi } from 'viem'
 import styles from './RaffleInfo.module.css'
-// import BuyRaffleModal from './BuyRaffleModal'
+import BuyRaffleModal from './BuyRaffleModal'
 
 const SALE_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_SALE_CONTRACT_ADDRESS || ''
 
@@ -232,7 +232,7 @@ export default function RaffleInfo() {
         </div>
       )}
 
-      {/* {selectedRaffle && (
+      {selectedRaffle && (
         <BuyRaffleModal
           isOpen={!!selectedRaffle}
           onClose={() => setSelectedRaffle(null)}
@@ -240,7 +240,7 @@ export default function RaffleInfo() {
           ticketPrice={selectedRaffle.ticketPrice}
           prize={selectedRaffle.prize}
         />
-      )} */}
+      )} 
     </div>
   )
 } 
