@@ -5,6 +5,7 @@ import { useClientMounted } from "@/hooks/useClientMount"
 import { formatUnits } from 'viem'
 import { useAccount } from 'wagmi'
 import { useMemo, useState, useEffect, useCallback } from 'react'
+import styles from './UserVestingInfo.module.css'
 // import FXFSaleABI from '../abi/FXFSale.json'
 // import { useWaitForTransactionReceipt, useWriteContract } from 'wagmi'
 // import { toast } from 'react-hot-toast'
@@ -444,13 +445,13 @@ export default function UserVestingInfo() {
     }, [startTime])
 
     if (remaining.isComplete) {
-      return <span className="completed">Vesting Complete</span>
+      return <span className={styles.completed}>Vesting Complete</span>
     }
 
     const format = (num: number) => num.toString().padStart(2, '0')
 
     return (
-      <span className="countdown">
+      <span className={styles.countdown}>
         {remaining.days}d {format(remaining.hours)}:{format(remaining.minutes)}:{format(remaining.seconds)}
       </span>
     )
@@ -574,52 +575,52 @@ export default function UserVestingInfo() {
   }
 
   return (
-    <div className="vesting-info-container">
-      <div className="vesting-info">
-        <div className="title-row">
-          <h2 className="title">Your Vesting Information</h2>
+    <div className={styles.vestingInfoContainer}>
+      <div className={styles.vestingInfo}>
+        <div className={styles.titleRow}>
+          <h2 className={styles.title}>Your Vesting Information</h2>
         </div>
         
-        <div className="raffles-grid">
+        <div className={styles.rafflesGrid}>
           {raffleVestingData.map((raffle) => (
-            <div key={raffle.raffleId.toString()} className="raffle-card">
+            <div key={raffle.raffleId.toString()} className={styles.raffleCard}>
               <h3>Raffle #{raffle.raffleId.toString()}</h3>
               
-              <div className="purchases-grid">
+              <div className={styles.purchasesGrid}>
                 {raffle.purchases.map((purchase, index) => (
-                  <div key={index} className="purchase-card">
+                  <div key={index} className={styles.purchaseCard}>
                     <h4>Purchase #{index + 1}</h4>
-                    <div className="purchase-info">
-                      <div className="info-row">
+                    <div className={styles.purchaseInfo}>
+                      <div className={styles.infoRow}>
                         <span>Total Amount:</span>
                         <span>{formatFxfAmount(purchase.amount)}</span>
                       </div>
-                      <div className="info-row">
+                      <div className={styles.infoRow}>
                         <span>Released:</span>
                         <span>{formatFxfAmount(purchase.releasedAmount)}</span>
                       </div>
-                      <div className="info-row">
+                      <div className={styles.infoRow}>
                         <span>Vested Amount:</span>
                         <span>{formatFxfAmount(BigInt(purchase.amount))}</span>
                       </div>
-                      <div className="info-row">
+                      <div className={styles.infoRow}>
                         <span>Amount to be Released:</span>
                         <span>{formatFxfAmount(BigInt(purchase.vestedAmount) - BigInt(purchase.releasedAmount))}</span>
                       </div>
-                      <div className="info-row">
+                      <div className={styles.infoRow}>
                         <span>Start Date:</span>
                         <span>{formatDate(BigInt(purchase.startTime))}</span>
                       </div>
-                      <div className="info-row">
+                      <div className={styles.infoRow}>
                         <span>Vesting Period:</span>
                         <span>180 days</span>
                       </div>
-                      <div className="info-row countdown-row">
+                      <div className={`${styles.infoRow} ${styles.countdownRow}`}>
                         <span>Time Remaining:</span>
                         <VestingCountdown startTime={BigInt(purchase.startTime)} />
                       </div>
 
-                      {/* <div className="release-row">
+                      {/* <div className={styles.releaseRow}>
                         <ReleaseButton 
                           raffleId={raffle.raffleId} 
                           isComplete={calculateRemainingTime(BigInt(purchase.startTime)).isComplete}
@@ -633,179 +634,6 @@ export default function UserVestingInfo() {
           ))}
         </div>
       </div>
-
-      <style jsx>{`
-        .vesting-info-container {
-          margin: 60px 0;
-          padding: 30px;
-          background: white;
-          border-radius: 20px;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-          border: 1px solid #E5E7EB;
-        }
-
-        .vesting-info {
-          width: 100%;
-        }
-
-        .title-row {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 24px;
-          padding-bottom: 16px;
-          border-bottom: 1px solid #E5E7EB;
-        }
-
-        .title {
-          font-size: 24px;
-          font-weight: 600;
-          color: #1a1a1a;
-          margin: 0;
-          position: relative;
-        }
-
-        .title:after {
-          content: '';
-          position: absolute;
-          bottom: -8px;
-          left: 0;
-          width: 60px;
-          height: 3px;
-          background: #2563EB;
-          border-radius: 2px;
-        }
-
-        .raffles-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-          gap: 24px;
-          margin-top: 24px;
-        }
-
-        .raffle-card {
-          background: #f8f9fa;
-          border-radius: 12px;
-          padding: 20px;
-          border: 1px solid #E5E7EB;
-          transition: all 0.2s ease;
-        }
-
-        .raffle-card:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
-        }
-
-        .raffle-card h3 {
-          font-size: 18px;
-          color: #1a1a1a;
-          margin: 0 0 16px 0;
-        }
-
-        .purchases-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-          gap: 16px;
-        }
-
-        .purchase-card {
-          background: #f8f9fa;
-          border-radius: 8px;
-          padding: 16px;
-        }
-
-        .purchase-card h4 {
-          font-size: 14px;
-          color: #666;
-          margin: 0 0 12px 0;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        }
-
-        .purchase-info {
-          display: grid;
-          gap: 8px;
-        }
-
-        .info-row {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          font-size: 14px;
-        }
-
-        .info-row span:first-child {
-          color: #666;
-        }
-
-        .info-row span:last-child {
-          font-weight: 500;
-          color: #1a1a1a;
-        }
-
-        .countdown-row {
-          margin-top: 8px;
-          padding-top: 8px;
-          border-top: 1px dashed #eee;
-        }
-
-        .countdown {
-          color: #2563eb;
-          font-weight: 600;
-          font-family: monospace;
-          font-size: 1.1em;
-        }
-
-        .completed {
-          color: #16a34a;
-          font-weight: 600;
-        }
-
-        .info-row span:last-child {
-          font-weight: 500;
-          color: #1a1a1a;
-          text-align: right;
-        }
-
-        @media (max-width: 768px) {
-          .vesting-info-container {
-            margin: 40px 0;
-            padding: 20px;
-          }
-        }
-
-        .release-row {
-          margin-top: 12px;
-          padding-top: 12px;
-          border-top: 1px solid #eee;
-          display: flex;
-          justify-content: center;
-        }
-
-        .release-button {
-          background: #2563eb;
-          color: white;
-          border: none;
-          border-radius: 6px;
-          padding: 8px 16px;
-          font-size: 14px;
-          font-weight: 500;
-          cursor: pointer;
-          transition: all 0.2s;
-          width: 100%;
-          max-width: 200px;
-        }
-
-        .release-button:hover:not(:disabled) {
-          background: #1d4ed8;
-        }
-
-        .release-button:disabled {
-          background: #94a3b8;
-          cursor: not-allowed;
-          opacity: 0.7;
-        }
-      `}</style>
     </div>
   )
 } 

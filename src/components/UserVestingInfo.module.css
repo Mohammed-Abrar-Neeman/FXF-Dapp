@@ -1,0 +1,186 @@
+.vestingInfoContainer {
+  margin: 60px 0;
+  padding: 30px;
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border: 1px solid #E5E7EB;
+  width: 100%;
+}
+
+.vestingInfo {
+  width: 100%;
+}
+
+.titleRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0;
+  position: relative;
+}
+
+.title:after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 0;
+  width: 60px;
+  height: 3px;
+  background: #2563EB;
+  border-radius: 2px;
+}
+
+.rafflesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+  margin-top: 24px;
+  width: 100%;
+}
+
+.raffleCard {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid #E5E7EB;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.raffleCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+}
+
+.raffleCard h3 {
+  font-size: 18px;
+  color: #1a1a1a;
+  margin: 0 0 16px 0;
+}
+
+.purchasesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  width: 100%;
+}
+
+.purchaseCard {
+  background: white;
+  border-radius: 8px;
+  padding: 16px;
+  border: 1px solid #E5E7EB;
+  width: 100%;
+}
+
+.purchaseCard h4 {
+  font-size: 14px;
+  color: #666;
+  margin: 0 0 12px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.purchaseInfo {
+  display: grid;
+  gap: 8px;
+}
+
+.infoRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+  padding: 4px 0;
+}
+
+.infoRow span:first-child {
+  color: #666;
+}
+
+.infoRow span:last-child {
+  font-weight: 500;
+  color: #1a1a1a;
+  text-align: right;
+}
+
+.countdownRow {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed #eee;
+}
+
+.countdown {
+  color: #2563eb;
+  font-weight: 600;
+  font-family: monospace;
+  font-size: 1.1em;
+}
+
+.completed {
+  color: #16a34a;
+  font-weight: 600;
+}
+
+.releaseRow {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #eee;
+  display: flex;
+  justify-content: center;
+}
+
+.releaseButton {
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 100%;
+  max-width: 200px;
+}
+
+.releaseButton:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.releaseButton:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+@media (max-width: 1024px) {
+  .rafflesGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .vestingInfoContainer {
+    margin: 40px 0;
+    padding: 20px;
+  }
+  
+  .rafflesGrid {
+    grid-template-columns: 1fr;
+  }
+  
+  .purchasesGrid {
+    grid-template-columns: 1fr;
+  }
+} 
