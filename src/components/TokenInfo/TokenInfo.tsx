@@ -1,6 +1,6 @@
 'use client'
 
-import { useContractRead } from '../hooks/useContract'
+import { useContractRead } from '../../hooks/useContract'
 import { useClientMounted } from "@/hooks/useClientMount"
 import { formatEther } from 'viem'
 import { useAccount } from 'wagmi'

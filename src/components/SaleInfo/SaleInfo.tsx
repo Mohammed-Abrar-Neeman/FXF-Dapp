@@ -3,7 +3,7 @@
 import { useSaleContractRead } from '@/hooks/useSaleContract'
 import { useClientMounted } from "@/hooks/useClientMount"
 import { formatUnits } from 'viem'
-import UserVestingInfo from './UserVestingInfo'
+import UserVestingInfo from '../UserVestingInfo/UserVestingInfo'
 import styles from './SaleInfo.module.css'
 
 export default function SaleInfo() {

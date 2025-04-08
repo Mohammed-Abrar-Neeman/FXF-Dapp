@@ -5,10 +5,10 @@ import { useClientMounted } from "@/hooks/useClientMount"
 import { formatUnits } from 'viem'
 import { useReadContracts, useAccount } from 'wagmi'
 import { useMemo, useState } from 'react'
-import FXFSaleABI from '../abi/FXFSale.json'
+import FXFSaleABI from '../../abi/FXFSale.json'
 import type { Abi } from 'viem'
 import styles from './RaffleInfo.module.css'
-import BuyRaffleModal from './BuyRaffleModal'
+import BuyRaffleModal from '../BuyRaffleModal/BuyRaffleModal'
 
 const SALE_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_SALE_CONTRACT_ADDRESS || ''
 

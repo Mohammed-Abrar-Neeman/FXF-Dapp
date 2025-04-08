@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { useTokenContractRead, useTokenContractWrite } from '../hooks/useTokenContract'
-import { useSaleContractRead, useSaleContractWrite } from '../hooks/useSaleContract'
+import { useTokenContractRead, useTokenContractWrite } from '../../hooks/useTokenContract'
+import { useSaleContractRead, useSaleContractWrite } from '../../hooks/useSaleContract'
 import { toast } from 'react-hot-toast'
 import { formatUnits, parseUnits } from 'viem'
 import { useAccount, useBalance } from 'wagmi'
